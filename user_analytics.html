@@ -9,6 +9,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <!-- 日付計算ライブラリ -->
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.7/dayjs.min.js"></script>
+    <!-- minMaxプラグインを追加 -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.7/plugin/minMax.js"></script>
+    <script>dayjs.extend(window.dayjs_plugin_minMax);</script>
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; }
@@ -146,25 +149,53 @@
         // CSV読み込み処理
         document.getElementById('csvFile').addEventListener('change', e => {
             const file = e.target.files[0];
+            if (!file) return;
+
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
                 complete: results => {
-                    allData = results.data.map(d => ({
-                        ...d,
-                        lvNum: parseInt(d.LEVEL?.replace('LEVEL_', '') || 0),
-                        date: d['FIRST LOGIN AT'] ? dayjs(d['FIRST LOGIN AT']) : null
-                    }));
+                    // LocalStorageには「生のデータ」を保存するのが最も安全です
+                    localStorage.setItem('game_dashboard_data', JSON.stringify(results.data));
                     
-                    // カレンダーの初期値をデータ範囲に合わせる
-                    const dates = allData.map(d => d.date).filter(d => d);
-                    if(dates.length) {
-                        document.getElementById('startDate').value = dayjs.min(dates).format('YYYY-MM-DD');
-                        document.getElementById('endDate').value = dayjs.max(dates).format('YYYY-MM-DD');
-                    }
-                    applyFilters();
+                    // データの整形と表示
+                    processData(results.data);
                 }
             });
+        });
+
+        // データを整形して表示の準備をする共通関数
+        function processData(rawData) {
+            allData = rawData.map(d => ({
+                ...d,
+                lvNum: parseInt(d.LEVEL?.replace('LEVEL_', '') || 0),
+                date: d['FIRST LOGIN AT'] ? dayjs(d['FIRST LOGIN AT']) : null
+            }));
+            
+            // カレンダーの初期値をデータ範囲に合わせる
+            const dates = allData.map(d => d.date).filter(d => d && d.isValid());
+            if(dates.length) {
+                document.getElementById('startDate').value = dayjs.min(dates).format('YYYY-MM-DD');
+                document.getElementById('endDate').value = dayjs.max(dates).format('YYYY-MM-DD');
+            }
+            
+            applyFilters();
+        }
+
+        // ページ読み込み時にLocalStorageからデータを復元
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem('game_dashboard_data');
+            
+            if (savedData) {
+                try {
+                    const rawData = JSON.parse(savedData);
+                    processData(rawData); // 共通関数で処理
+                    console.log("LocalStorageからデータを復元しました");
+                } catch (e) {
+                    console.error("データの復元に失敗しました", e);
+                    localStorage.removeItem('game_dashboard_data');
+                }
+            }
         });
 
         // 絞り込み処理
@@ -334,6 +365,38 @@
                 body.insertAdjacentHTML('beforeend', row);
             });
         }
+
+        // ページ読み込み時にLocalStorageからデータを復元
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem('game_dashboard_data');
+            
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    
+                    // 保存されたデータの日付文字列をdayjsオブジェクトに復元
+                    allData = parsed.map(d => ({
+                        ...d,
+                        date: d.date ? dayjs(d.date) : null
+                    }));
+
+                    // カレンダーの初期値をデータ範囲に合わせる
+                    const dates = allData.map(d => d.date).filter(d => d);
+                    if(dates.length) {
+                        document.getElementById('startDate').value = dayjs.min(dates).format('YYYY-MM-DD');
+                        document.getElementById('endDate').value = dayjs.max(dates).format('YYYY-MM-DD');
+                    }
+
+                    // ダッシュボードを表示
+                    applyFilters();
+                    
+                    console.log("LocalStorageからデータを復元しました");
+                } catch (e) {
+                    console.error("データの復元に失敗しました", e);
+                    localStorage.removeItem('game_dashboard_data');
+                }
+            }
+        });
     </script>
 </body>
 </html>
