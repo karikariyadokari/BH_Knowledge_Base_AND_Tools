@@ -243,6 +243,59 @@
             color: #be123c;
             font-weight: bold;
         }
+
+        /* --- スマホ表示用レイアウト --- */
+        @media screen and (max-width: 768px) {
+            body {
+                flex-direction: column; /* 縦並びに変更 */
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: sticky; /* 上部に固定 */
+                top: 0;
+                border-right: none;
+                border-bottom: 1px solid var(--sidebar-border);
+            }
+
+            .sidebar h2 {
+                padding: 15px;
+                font-size: 1rem;
+            }
+
+            .nav-menu {
+                display: flex;
+                overflow-x: auto; /* 横スクロール可能に */
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .nav-menu li {
+                padding: 10px 15px;
+                border-bottom: none;
+                border-right: 1px solid rgba(0,0,0,0.05);
+            }
+
+            .nav-menu li.active {
+                border-left: none;
+                border-bottom: 4px solid var(--accent); /* 下線をアクティブ表示に */
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 15px;
+            }
+
+            .kb-section {
+                padding: 20px 15px;
+            }
+
+            .status-legend {
+                grid-template-columns: 1fr; /* ステータス凡例を1列に */
+            }
+        }
     </style>
 </head>
 <body>
@@ -642,22 +695,19 @@
 <script>
     // タブ切り替え用スクリプト
     function switchTab(event, targetId) {
-        // メニューのアクティブ状態をリセット
-        document.querySelectorAll('.nav-menu li').forEach(li => {
-            li.classList.remove('active');
-        });
-        // クリックされたメニューをアクティブに
+        document.querySelectorAll('.nav-menu li').forEach(li => li.classList.remove('active'));
         event.currentTarget.classList.add('active');
 
-        // 全セクションを非表示
-        document.querySelectorAll('.kb-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        // 対象のセクションを表示
+        document.querySelectorAll('.kb-section').forEach(section => section.classList.remove('active'));
         document.getElementById(targetId).classList.add('active');
         
-        // 上部にスクロール
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // スマホ時にタブを切り替えたらコンテンツの先頭へスクロール
+        if (window.innerWidth <= 768) {
+            const contentTop = document.querySelector('.main-content').offsetTop;
+            window.scrollTo({ top: contentTop - 100, behavior: 'smooth' });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     }
 </script>
 
