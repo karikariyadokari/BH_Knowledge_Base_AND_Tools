@@ -222,37 +222,58 @@
             });
         });
 
-        // データを整形して表示の準備をする共通関数
-        function processData(rawData) {
-            if (!rawData || !rawData.length) return;
 
+        // --- 1. データを整形して処理する共通関数 ---
+        function processData(rawData) {
+            if (!rawData || rawData.length === 0) return;
+
+            // localStorageに生データを保存（次回起動時のため）
+            localStorage.setItem('game_dashboard_data', JSON.stringify(rawData));
+
+            // データの整形（文字列を数値や日付に変換）
             allData = rawData.map(d => ({
                 ...d,
-                // LEVEL_10 などの文字列から数値を抽出
+                // LEVEL_10 -> 10 に変換。数値として計算できるようにする
                 lvNum: parseInt(d.LEVEL?.replace('LEVEL_', '') || 0),
-                // 日付オブジェクトに変換
+                // 文字列の日付をdayjsオブジェクトに変換
                 date: d['FIRST LOGIN AT'] ? dayjs(d['FIRST LOGIN AT']) : null
             }));
-            
-            // カレンダーの初期値をデータ範囲に合わせる
+
+            // カレンダーの初期値をデータの範囲に自動設定
             const dates = allData.map(d => d.date).filter(d => d && d.isValid());
             if(dates.length) {
                 document.getElementById('startDate').value = dayjs.min(dates).format('YYYY-MM-DD');
                 document.getElementById('endDate').value = dayjs.max(dates).format('YYYY-MM-DD');
             }
-            
+
+            // 画面を更新
             applyFilters();
         }
 
-        // ページ読み込み時にLocalStorageからデータを復元（ここを1つに統合）
+        // --- 2. CSVファイルが選択された時の処理 ---
+        document.getElementById('csvFile').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: results => {
+                    processData(results.data);
+                }
+            });
+        });
+
+        // --- 3. ページを開いた瞬間の復元処理 ---
         window.addEventListener('DOMContentLoaded', () => {
             const savedData = localStorage.getItem('game_dashboard_data');
             
             if (savedData) {
                 try {
-                    const rawData = JSON.parse(savedData);
-                    processData(rawData); // 共通関数を呼ぶだけでOK
-                    console.log("LocalStorageからデータを復元しました");
+                    const parsed = JSON.parse(savedData);
+                    console.log("LocalStorageからデータを復元中...");
+                    // 保存されていた生データを共通関数に渡して整形
+                    processData(parsed); 
                 } catch (e) {
                     console.error("データの復元に失敗しました", e);
                     localStorage.removeItem('game_dashboard_data');
@@ -260,7 +281,7 @@
             }
         });
 
-        // 絞り込み処理
+        // --- 4. フィルタリングと描画（変更なし、ただしlvNumが必要） ---
         function applyFilters() {
             if (!allData.length) return;
 
@@ -271,8 +292,10 @@
             const statusFilt = document.getElementById('statusFilter').value;
 
             const filtered = allData.filter(d => {
+                // ここで lvNum (数値) を使用しているため、processDataでの変換が必須
                 const lvMatch = d.lvNum >= minLv && d.lvNum <= maxLv;
                 const statusMatch = statusFilt === 'ALL' || d.STATUS === statusFilt;
+                
                 let dateMatch = true;
                 if(startStr && endStr && d.date && d.date.isValid()) {
                     dateMatch = d.date.isAfter(dayjs(startStr).subtract(1, 'day')) && 
