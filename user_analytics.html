@@ -196,12 +196,12 @@
 
     <script>
 
-        // マニュアルの開閉処理
+       // マニュアルの開閉処理
         function toggleManual() {
             const modal = document.getElementById('manualModal');
             modal.classList.toggle('hidden');
         }
-        
+
         let allData = [];
         let levelChart = null;
         let trendChart = null;
@@ -215,10 +215,8 @@
                 header: true,
                 skipEmptyLines: true,
                 complete: results => {
-                    // LocalStorageには「生のデータ」を保存するのが最も安全です
+                    // 生データを保存
                     localStorage.setItem('game_dashboard_data', JSON.stringify(results.data));
-                    
-                    // データの整形と表示
                     processData(results.data);
                 }
             });
@@ -226,9 +224,13 @@
 
         // データを整形して表示の準備をする共通関数
         function processData(rawData) {
+            if (!rawData || !rawData.length) return;
+
             allData = rawData.map(d => ({
                 ...d,
+                // LEVEL_10 などの文字列から数値を抽出
                 lvNum: parseInt(d.LEVEL?.replace('LEVEL_', '') || 0),
+                // 日付オブジェクトに変換
                 date: d['FIRST LOGIN AT'] ? dayjs(d['FIRST LOGIN AT']) : null
             }));
             
@@ -242,14 +244,14 @@
             applyFilters();
         }
 
-        // ページ読み込み時にLocalStorageからデータを復元
+        // ページ読み込み時にLocalStorageからデータを復元（ここを1つに統合）
         window.addEventListener('DOMContentLoaded', () => {
             const savedData = localStorage.getItem('game_dashboard_data');
             
             if (savedData) {
                 try {
                     const rawData = JSON.parse(savedData);
-                    processData(rawData); // 共通関数で処理
+                    processData(rawData); // 共通関数を呼ぶだけでOK
                     console.log("LocalStorageからデータを復元しました");
                 } catch (e) {
                     console.error("データの復元に失敗しました", e);
@@ -272,7 +274,7 @@
                 const lvMatch = d.lvNum >= minLv && d.lvNum <= maxLv;
                 const statusMatch = statusFilt === 'ALL' || d.STATUS === statusFilt;
                 let dateMatch = true;
-                if(startStr && endStr && d.date) {
+                if(startStr && endStr && d.date && d.date.isValid()) {
                     dateMatch = d.date.isAfter(dayjs(startStr).subtract(1, 'day')) && 
                                 d.date.isBefore(dayjs(endStr).add(1, 'day'));
                 }
@@ -281,7 +283,6 @@
 
             updateDashboard(filtered);
         }
-
         // ダッシュボード更新
         function updateDashboard(data) {
             const count = data.length;
