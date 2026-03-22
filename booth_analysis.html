@@ -15,7 +15,6 @@
         header { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
         
-        /* タイトル周りのレイアウト調整 */
         .title-area { display: flex; align-items: center; gap: 15px; }
         h1 { margin: 0; font-size: 1.4rem; color: var(--primary); display: flex; align-items: center; }
         h1::before { content: "📊"; margin-right: 10px; }
@@ -71,9 +70,8 @@
 <body>
 
 <div class="container">
-<header>
+    <header>
         <div class="header-top">
-            <!-- 戻るボタンとタイトルをまとめるエリア -->
             <div class="title-area">
                 <a href="index.html" class="btn btn-outline">🏠 TOPへ戻る</a>
                 <h1>Bounty Hunters 稼働分析ダッシュボード</h1>
@@ -115,7 +113,10 @@
             <button class="btn btn-outline" onclick="exportJSON()">JSON保存</button>
             <button class="btn btn-outline" onclick="document.getElementById('importInput').click()">JSON読込</button>
             <input type="file" id="importInput" accept=".json" style="display:none" onchange="importJSON(this)">
-            <button class="btn btn-blue" onclick="saveToDrive()" id="btn-drive">☁️ Driveへ同期</button>
+            
+            <button class="btn btn-blue" onclick="loadFromDrive()" id="btn-drive-load">☁️ Driveから読込</button>
+            <button class="btn btn-blue" onclick="saveToDrive(false)" id="btn-drive">☁️ Driveへ同期</button>
+            
             <button class="btn btn-outline" onclick="clearData()" style="color:#d93025; margin-left:auto;">データ全消去</button>
         </div>
     </header>
@@ -124,13 +125,10 @@
 </div>
 
 <script>
-// ==========================================
-// 初期設定とグローバル変数
-// ==========================================
 let db = {};
 const CEILING = 20;
 // ★ここにGASでデプロイしたウェブアプリのURLを貼り付けてください★
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwXOmudK--nFMy8tNiSYTfKHAYwPQ3_FweoJvMvEDWuSbTVstBEBlSESisiRv5fILR-bg/exec";
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxGA9leBzM-71EfWA-JXdowvetywkB6Tcinf83gvjoGco506e0KiqhpAkoGxO4oxGmwjg/exec";
 
 window.onload = () => {
     const saved = localStorage.getItem('bh_v4_db');
@@ -138,39 +136,19 @@ window.onload = () => {
     setupDragAndDrop();
 };
 
-// ==========================================
-// ドラッグ＆ドロップ関連
-// ==========================================
 function setupDragAndDrop() {
     const dropZone = document.getElementById('dropZone');
-
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-
-    dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-    });
-
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
     dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        
+        e.preventDefault(); dropZone.classList.remove('dragover');
         const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFiles({ target: { files: files } });
-        }
+        if (files.length > 0) { handleFiles({ target: { files: files } }); }
     });
 }
 
-// ファイル選択クリック時のリスナー
 document.getElementById('fileInput').addEventListener('change', handleFiles);
 
-// ==========================================
-// CSV解析とデータ構築
-// ==========================================
 async function handleFiles(e) {
     const files = Array.from(e.target.files);
     const batchRoomData = {};
@@ -180,22 +158,18 @@ async function handleFiles(e) {
         parse(text, batchRoomData);
     }
     
-    // 全行を読み終わった後に、アシストと離脱を判定
     Object.keys(batchRoomData).forEach(rid => {
         const r = batchRoomData[rid];
         const log = db[r.mac]?.logs[r.date];
         if (!log) return;
-
         if (!r.hasWin) {
-            if (r.loses >= CEILING) {
-                log.a += Math.floor(r.loses / CEILING);
-            } else if (r.loses > 0) {
-                log.drop++;
-            }
+            if (r.loses >= CEILING) { log.a += Math.floor(r.loses / CEILING); } 
+            else if (r.loses > 0) { log.drop++; }
         }
     });
 
-    save();
+    // ★ CSV読み込み後に自動でDriveへ同期 (引数trueで通知なし)
+    save(true);
 }
 
 function parse(text, batchRoomData) {
@@ -223,16 +197,12 @@ function parse(text, batchRoomData) {
         const rid = cols[idx.info]?.match(/room: (\d+)/)?.[1] || cols[idx.info]?.match(/'room_id':'(\d+)'/)?.[1];
 
         if (!db[mac]) db[mac] = { name: mac, tag: "", logs: {} };
-        if (!db[mac].logs[date]) {
-            db[mac].logs[date] = { w:0, a:0, l:0, e1:0, e2:0, e3:0, e4:0, drop:0 };
-        }
+        if (!db[mac].logs[date]) { db[mac].logs[date] = { w:0, a:0, l:0, e1:0, e2:0, e3:0, e4:0, drop:0 }; }
         
         const log = db[mac].logs[date];
 
         if (rid) {
-            if (!batchRoomData[rid]) {
-                batchRoomData[rid] = { mac: mac, date: date, loses: 0, hasWin: false };
-            }
+            if (!batchRoomData[rid]) { batchRoomData[rid] = { mac: mac, date: date, loses: 0, hasWin: false }; }
         }
 
         if (type === 'WIN_TURN') {
@@ -251,60 +221,44 @@ function parse(text, batchRoomData) {
     }
 }
 
-// ==========================================
-// 描画 (UIアップデート)
-// ==========================================
 function render() {
     const list = document.getElementById('machineList');
     list.innerHTML = '';
-    
     const sortOrder = document.getElementById('sortOrder').value;
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
-    
-    // 現在選択中のタグを取得
     const tagSelect = document.getElementById('tagFilter');
     const tagFilter = tagSelect ? tagSelect.value : "";
 
-    // 存在する全タグを抽出してプルダウンを更新
     const allTags = new Set();
-    Object.values(db).forEach(m => {
-        if (m.tag && m.tag.trim() !== '') allTags.add(m.tag.trim());
-    });
+    Object.values(db).forEach(m => { if (m.tag && m.tag.trim() !== '') allTags.add(m.tag.trim()); });
     
     if (tagSelect) {
         tagSelect.innerHTML = '<option value="">すべて</option>';
         allTags.forEach(tag => {
             const opt = document.createElement('option');
-            opt.value = tag;
-            opt.textContent = tag;
+            opt.value = tag; opt.textContent = tag;
             if (tag === tagFilter) opt.selected = true;
             tagSelect.appendChild(opt);
         });
     }
 
-    // ソート処理
     const sortedMacs = Object.keys(db).sort((a, b) => {
         if (sortOrder === 'name') {
             const nameA = db[a].name || a;
             const nameB = db[b].name || b;
             return nameA.localeCompare(nameB, 'ja', { numeric: true });
-        } else {
-            return a.localeCompare(b);
-        }
+        } else { return a.localeCompare(b); }
     });
 
-    // タグによるフィルタリング処理
     const filteredMacs = sortedMacs.filter(mac => {
         if (tagFilter !== "" && db[mac].tag !== tagFilter) return false;
         return true;
     });
 
-    // カードの生成
     filteredMacs.forEach(mac => {
         const m = db[mac];
         const cid = `area-${mac.replace(/:/g, '')}`;
-        
         const filteredDates = Object.keys(m.logs).filter(d => {
             if (startDate && d < startDate) return false;
             if (endDate && d > endDate) return false;
@@ -312,7 +266,6 @@ function render() {
         }).sort().reverse();
 
         if (filteredDates.length === 0) return;
-
         let sw=0, sa=0, sl=0, sd=0;
         
         filteredDates.forEach(d => { 
@@ -320,9 +273,7 @@ function render() {
             sw += (l.w || 0); sa += (l.a || 0); sl += (l.l || 0); sd += (l.drop || 0); 
         });
         
-        const totalPlays = sw + sl;
-        const totalAcq = sw + sa;
-
+        const totalPlays = sw + sl; const totalAcq = sw + sa;
         const card = document.createElement('div');
         card.className = 'machine-card';
         card.innerHTML = `
@@ -364,8 +315,7 @@ function render() {
                             ${filteredDates.map(d => {
                                 const l = m.logs[d];
                                 const w = l.w || 0; const a = l.a || 0; const ls = l.l || 0;
-                                const plays = w + ls; 
-                                const acq = w + a;
+                                const plays = w + ls; const acq = w + a;
                                 return `<tr>
                                     <td>${d}</td>
                                     <td class="col-win">${w}</td>
@@ -389,21 +339,17 @@ function render() {
     });
 }
 
-// ==========================================
-// ユーティリティと保存・連携機能
-// ==========================================
-function clearDateFilter() {
-    document.getElementById('startDate').value = '';
-    document.getElementById('endDate').value = '';
-    render();
-}
+function clearDateFilter() { document.getElementById('startDate').value = ''; document.getElementById('endDate').value = ''; render(); }
 
-function rename(mac, val) { db[mac].name = val; save(); }
-function updateTag(mac, val) { db[mac].tag = val; save(); }
+// ★ 名前の変更・タグの追加時にも自動でDriveへ同期する
+function rename(mac, val) { db[mac].name = val; save(true); }
+function updateTag(mac, val) { db[mac].tag = val; save(true); }
 
-function save() { 
+// ★ save関数を拡張。autoSyncがtrueの場合はそのまま自動アップロードを裏で実行
+function save(autoSync = false) { 
     localStorage.setItem('bh_v4_db', JSON.stringify(db)); 
     render(); 
+    if (autoSync) { saveToDrive(true); }
 }
 
 function exportJSON() {
@@ -415,18 +361,11 @@ function exportJSON() {
 
 function importJSON(input) {
     const r = new FileReader();
-    r.onload = (e) => { db = JSON.parse(e.target.result); save(); };
+    r.onload = (e) => { db = JSON.parse(e.target.result); save(false); }; // ローカル読込時は自動同期しない
     r.readAsText(input.files[0]);
 }
 
-function clearData() { 
-    if(confirm('データを全消去しますか？')) { 
-        db = {}; 
-        localStorage.removeItem('bh_v4_db'); 
-        render(); 
-    } 
-}
-
+function clearData() { if(confirm('データを全消去しますか？')) { db = {}; localStorage.removeItem('bh_v4_db'); render(); } }
 function exportPDF(id, name) {
     const el = document.getElementById(id);
     const pdfOnly = el.querySelector('.pdf-only');
@@ -435,36 +374,61 @@ function exportPDF(id, name) {
         .from(el).save().then(() => pdfOnly.style.display = 'none');
 }
 
-// GASを用いたGoogle Driveへの同期処理
-async function saveToDrive() {
-    if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('ここにURLを入力')) {
-        alert("GASのURLが設定されていません。コード内のGAS_WEB_APP_URLを修正してください。");
-        return;
-    }
+// ==========================================
+// ★ Google Drive連携機能
+// ==========================================
 
+// Driveへの保存 (isAuto = true の場合はアラートを出さない)
+async function saveToDrive(isAuto = false) {
+    if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('ここにURLを入力')) {
+        if (!isAuto) alert("GASのURLが設定されていません。"); return;
+    }
     const btn = document.getElementById('btn-drive');
-    const originalText = btn.textContent;
-    btn.textContent = "同期中...";
+    const originalText = "☁️ Driveへ同期";
+    btn.textContent = isAuto ? "自動同期中..." : "同期中...";
     btn.disabled = true;
 
     try {
         const response = await fetch(GAS_WEB_APP_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" }, 
-            body: JSON.stringify(db)
+            method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(db)
         });
-        
         const result = await response.json();
         if(result.status === "success") {
-            alert("Google Driveにデータを同期しました。");
+            if(!isAuto) alert("Google Driveにデータを同期しました。");
         } else {
-            alert("同期エラー: " + result.message);
+            if(!isAuto) alert("同期エラー: " + result.message);
         }
     } catch (err) {
-        alert("通信エラーが発生しました: " + err);
+        if(!isAuto) alert("通信エラーが発生しました: " + err);
     } finally {
-        btn.textContent = originalText;
-        btn.disabled = false;
+        btn.textContent = originalText; btn.disabled = false;
+    }
+}
+
+// Driveからの読み込み
+async function loadFromDrive() {
+    if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('ここにURLを入力')) {
+        alert("GASのURLが設定されていません。"); return;
+    }
+    const btn = document.getElementById('btn-drive-load');
+    const originalText = "☁️ Driveから読込";
+    btn.textContent = "読込中..."; btn.disabled = true;
+
+    try {
+        const response = await fetch(GAS_WEB_APP_URL);
+        const data = await response.json();
+        
+        if (data && Object.keys(data).length > 0) {
+            db = data;
+            save(false); // 読み込み直後は再同期不要
+            alert("Google Driveからデータを読み込みました。");
+        } else {
+            alert("Drive上のデータが空か、読み込めませんでした。");
+        }
+    } catch (err) {
+        alert("読み込みエラーが発生しました。GAS側で「doGet」関数が正しく設定されているか確認してください。\n詳細: " + err);
+    } finally {
+        btn.textContent = originalText; btn.disabled = false;
     }
 }
 </script>
