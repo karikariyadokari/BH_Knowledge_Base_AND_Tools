@@ -59,6 +59,14 @@
             .print-break { page-break-before: always; }
             canvas { max-height: 220px !important; }
         }
+
+        /* ===== 同期ステータス ===== */
+        .sync-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .sync-dot.idle    { background: #475569; }
+        .sync-dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
+        .sync-dot.ok      { background: #10b981; }
+        .sync-dot.error   { background: #ef4444; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
     </style>
 </head>
 <body class="p-4 md:p-6">
@@ -80,6 +88,12 @@
             </button>
             <button onclick="toggleManual()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-slate-600 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>マニュアル
+            </button>
+            <!-- GAS同期ボタン -->
+            <button onclick="toggleSyncPanel()" class="bg-indigo-700 hover:bg-indigo-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-indigo-500 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Drive同期
+                <span id="syncDot" class="sync-dot idle"></span>
             </button>
             <div class="bg-sky-900/50 p-1.5 rounded-md border border-sky-700 flex items-center gap-2">
                 <span class="text-xs font-bold text-sky-300 ml-2">1. ユーザーCSV:</span>
@@ -425,6 +439,88 @@
     </div>
 </div>
 
+<!-- ===== GAS 同期パネル ===== -->
+<div id="syncPanel" class="hidden fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4 backdrop-blur-sm no-print">
+    <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-xl border border-indigo-700/60">
+        <div class="p-5 border-b border-slate-700 flex justify-between items-center">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Google Drive 同期
+            </h2>
+            <button onclick="toggleSyncPanel()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-5 space-y-4 text-sm">
+
+            <!-- URL入力 -->
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">GAS ウェブアプリ URL</label>
+                <input type="text" id="gasUrl" class="input-field text-xs font-mono"
+                    placeholder="https://script.google.com/macros/s/XXXXX/exec">
+            </div>
+
+            <!-- フロー説明 -->
+            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div id="flowStep1" class="rounded-lg p-3 border border-slate-600 bg-slate-700/40">
+                    <div class="text-lg mb-1">📂</div>
+                    <div class="font-bold text-slate-200">① ローカル読み込み</div>
+                    <div class="text-slate-400 mt-0.5">CSVをファイル選択</div>
+                    <div id="stepStatus1" class="mt-1 text-xs font-bold text-slate-500">未完了</div>
+                </div>
+                <div id="flowStep2" class="rounded-lg p-3 border border-slate-600 bg-slate-700/40">
+                    <div class="text-lg mb-1">☁️</div>
+                    <div class="font-bold text-slate-200">② Driveへ保存</div>
+                    <div class="text-slate-400 mt-0.5">URLを設定して実行</div>
+                    <div id="stepStatus2" class="mt-1 text-xs font-bold text-slate-500">未実行</div>
+                </div>
+                <div id="flowStep3" class="rounded-lg p-3 border border-slate-600 bg-slate-700/40">
+                    <div class="text-lg mb-1">🔄</div>
+                    <div class="font-bold text-slate-200">③ 他PCで同期</div>
+                    <div class="text-slate-400 mt-0.5">開くと自動取得</div>
+                    <div id="stepStatus3" class="mt-1 text-xs font-bold text-slate-500">-</div>
+                </div>
+            </div>
+
+            <!-- 自動同期トグル -->
+            <div class="flex items-center justify-between bg-slate-700/40 rounded-lg px-4 py-2.5 border border-slate-600">
+                <div>
+                    <p class="text-xs font-bold text-slate-200">ページ読み込み時に自動でDriveから取得</p>
+                    <p class="text-xs text-slate-500 mt-0.5">URLを保存済みの場合、開くたびに最新データを反映</p>
+                </div>
+                <label class="flex items-center gap-2 cursor-pointer select-none ml-4">
+                    <div class="relative flex-shrink-0">
+                        <input type="checkbox" id="autoSync" class="sr-only">
+                        <div id="toggleBg" class="w-10 h-5 bg-slate-600 rounded-full transition-colors"></div>
+                        <div id="toggleDot" class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></div>
+                    </div>
+                </label>
+            </div>
+
+            <!-- ステータスメッセージ -->
+            <div id="syncStatusMsg" class="hidden rounded-lg px-4 py-2.5 text-xs font-semibold flex items-center gap-2"></div>
+        </div>
+
+        <div class="p-4 border-t border-slate-700 flex flex-wrap justify-between items-center gap-2">
+            <span id="syncLastFetched" class="text-xs text-slate-500"></span>
+            <div class="flex gap-2">
+                <button onclick="toggleSyncPanel()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md text-sm">閉じる</button>
+                <!-- アップロード（ローカル→Drive） -->
+                <button onclick="uploadToDrive()" id="btnUpload"
+                    class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-md text-sm flex items-center gap-1.5 disabled:opacity-40"
+                    title="読み込み済みのCSVをDriveに保存します">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    Driveに保存
+                </button>
+                <!-- ダウンロード（Drive→ダッシュボード） -->
+                <button onclick="syncFromDrive()" id="btnSync"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-md text-sm flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Driveから取得
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ===== マニュアルモーダル ===== -->
 <div id="manualModal" class="hidden fixed inset-0 bg-black/80 z-50 flex justify-center items-center p-4 backdrop-blur-sm no-print">
     <div class="bg-slate-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-600">
@@ -437,7 +533,7 @@
                 売上CSVは <strong>CURRENCY=JPY の行のみ</strong>を集計します。ゲーム内通貨(BCOIN)付与ログは自動除外されます。
             </div>
 
-        <section>
+            <section>
                     <h3 class="text-lg font-bold text-sky-400 border-b border-slate-700 pb-2 mb-3">1. データの読み込み (CSV)</h3>
                     <p class="text-sm leading-relaxed">右上の「ファイルを選択」ボタンから、指定フォーマットのユーザーデータCSVをアップロードしてください。読み込まれたデータはブラウザ（ローカルストレージ）に自動保存されるため、次回アクセス時も前回のデータが復元されます。</p>
                 </section>
@@ -540,18 +636,6 @@ let revTabMode = 'daily';
 
 // チャートインスタンス
 const charts = {};
-
-// =============================================
-// CSV読み込み
-// =============================================
-document.getElementById('csvFile').addEventListener('change', e => {
-    const f = e.target.files[0]; if (!f) return;
-    Papa.parse(f, { header:true, skipEmptyLines:true, complete: r => processData(r.data) });
-});
-document.getElementById('salesFile').addEventListener('change', e => {
-    const f = e.target.files[0]; if (!f) return;
-    Papa.parse(f, { header:true, skipEmptyLines:true, complete: r => processSalesData(r.data) });
-});
 
 // =============================================
 // 売上データ処理
@@ -1203,6 +1287,212 @@ function exportCSV() {
     const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),download:`users_${today.format('YYYYMMDD')}.csv`});
     a.click();
 }
+
+// =============================================
+// GAS 同期 — アップロード / ダウンロード
+// =============================================
+const GAS_URL_KEY  = 'gas_dashboard_url';
+const GAS_AUTO_KEY = 'gas_dashboard_auto';
+
+// ローカルで読み込み済みのCSV生テキストを保持
+let localUserCsv  = null;
+let localSalesCsv = null;
+
+// パネル開閉
+function toggleSyncPanel() {
+    document.getElementById('syncPanel').classList.toggle('hidden');
+    const saved = localStorage.getItem(GAS_URL_KEY) || '';
+    document.getElementById('gasUrl').value = saved;
+    const auto = localStorage.getItem(GAS_AUTO_KEY) === '1';
+    setAutoToggle(auto);
+    updateFlowSteps();
+}
+
+// トグルUI
+document.getElementById('autoSync').addEventListener('change', function() {
+    setAutoToggle(this.checked);
+});
+function setAutoToggle(on) {
+    document.getElementById('autoSync').checked = on;
+    document.getElementById('toggleBg').style.background = on ? '#4f46e5' : '';
+    document.getElementById('toggleDot').style.transform = on ? 'translateX(20px)' : '';
+}
+
+// ステップ表示更新
+function updateFlowSteps() {
+    const hasLocal = localUserCsv || localSalesCsv;
+    const s1 = document.getElementById('stepStatus1');
+    const s2 = document.getElementById('stepStatus2');
+    if (s1) {
+        s1.innerText  = hasLocal ? '✅ 読み込み済み' : '⏳ 未読み込み';
+        s1.className  = 'mt-1 text-xs font-bold ' + (hasLocal ? 'text-emerald-400' : 'text-slate-500');
+    }
+    // ② はアップロード後に updateFlowSteps('uploaded') で更新
+}
+
+// 設定保存
+function saveGasSettings() {
+    const url  = document.getElementById('gasUrl').value.trim();
+    const auto = document.getElementById('autoSync').checked;
+    if (url) localStorage.setItem(GAS_URL_KEY, url);
+    localStorage.setItem(GAS_AUTO_KEY, auto ? '1' : '0');
+}
+
+// 同期ドットとメッセージ
+function setSyncStatus(state, msg) {
+    const dot = document.getElementById('syncDot');
+    if (dot) dot.className = 'sync-dot ' + state;
+    const box = document.getElementById('syncStatusMsg');
+    if (!box) return;
+    if (!msg) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    const styles = {
+        loading: 'bg-amber-900/40 border border-amber-700/60 text-amber-200',
+        ok:      'bg-emerald-900/40 border border-emerald-700/60 text-emerald-200',
+        error:   'bg-red-900/40 border border-red-700/60 text-red-200',
+    };
+    box.className = (styles[state] || '') + ' rounded-lg px-4 py-2.5 text-xs font-semibold flex items-center gap-2';
+    box.innerHTML = msg;
+}
+
+function getGasUrl() {
+    const url = document.getElementById('gasUrl').value.trim();
+    if (!url) { setSyncStatus('error', '⚠️ GAS ウェブアプリ URL を入力してください。'); return null; }
+    saveGasSettings();
+    return url;
+}
+
+// =============================================
+// ② Driveへ保存（ローカル → Drive）
+// =============================================
+async function uploadToDrive() {
+    const url = getGasUrl();
+    if (!url) return;
+
+    if (!localUserCsv && !localSalesCsv) {
+        setSyncStatus('error', '⚠️ 先にローカルCSVを読み込んでください（画面右上のファイル選択）。');
+        return;
+    }
+
+    setSyncStatus('loading', '⏳ Drive にアップロード中...');
+
+    try {
+        const body = { type: 'both' };
+        if (localUserCsv)  body.user  = localUserCsv;
+        if (localSalesCsv) body.sales = localSalesCsv;
+
+        const res  = await fetch(url, {
+            method:  'POST',
+            body:    JSON.stringify(body),
+            // GAS は Content-Type: text/plain で受け取る必要がある
+            headers: { 'Content-Type': 'text/plain' },
+            redirect:'follow'
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '不明なエラー');
+
+        const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
+        document.getElementById('syncLastFetched').innerText = `最終保存: ${now}`;
+        setSyncStatus('ok', `☁️ Driveへの保存完了 — ${now}<br><span style="font-weight:400;opacity:0.8">他のPCで「Driveから取得」を押すと同じデータが読み込まれます。</span>`);
+
+        // ステップ②を更新
+        const s2 = document.getElementById('stepStatus2');
+        if (s2) { s2.innerText = '✅ 保存済み'; s2.className = 'mt-1 text-xs font-bold text-emerald-400'; }
+        const s3 = document.getElementById('stepStatus3');
+        if (s3) { s3.innerText = '✅ 同期可能'; s3.className = 'mt-1 text-xs font-bold text-sky-400'; }
+
+    } catch (err) {
+        setSyncStatus('error', `❌ アップロード失敗: ${err.message}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定をご確認ください。</span>`);
+    }
+}
+
+// =============================================
+// ③ Driveから取得（Drive → ダッシュボード）
+// =============================================
+async function syncFromDrive() {
+    const url = getGasUrl();
+    if (!url) return;
+
+    setSyncStatus('loading', '⏳ Drive からデータを取得中...');
+
+    try {
+        const res  = await fetch(url + '?type=both', { redirect: 'follow' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '不明なエラー');
+
+        const { user, sales } = json.data;
+        let loaded = [];
+
+        if (user) {
+            localUserCsv = user;
+            const parsed = Papa.parse(user.trim(), { header: true, skipEmptyLines: true });
+            processData(parsed.data);
+            loaded.push('ユーザー');
+        }
+        if (sales) {
+            localSalesCsv = sales;
+            const parsed = Papa.parse(sales.trim(), { header: true, skipEmptyLines: true });
+            processSalesData(parsed.data);
+            loaded.push('売上');
+        }
+
+        if (!user && !sales) {
+            setSyncStatus('error', '⚠️ Drive にまだデータがありません。先に「Driveに保存」を実行してください。');
+            return;
+        }
+
+        const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
+        document.getElementById('syncLastFetched').innerText = `最終取得: ${now}`;
+        setSyncStatus('ok', `✅ 同期完了（${loaded.join('・')}CSV）— ${now}`);
+        updateFlowSteps();
+
+    } catch (err) {
+        setSyncStatus('error', `❌ 取得失敗: ${err.message}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定・ファイル存在をご確認ください。</span>`);
+    }
+}
+
+// 後方互換
+async function syncFromGas() { await syncFromDrive(); }
+
+// =============================================
+// ページ読み込み時の自動同期
+// =============================================
+window.addEventListener('load', () => {
+    const auto = localStorage.getItem(GAS_AUTO_KEY) === '1';
+    const url  = localStorage.getItem(GAS_URL_KEY)  || '';
+    if (auto && url) {
+        document.getElementById('gasUrl').value = url;
+        setAutoToggle(true);
+        syncFromDrive();
+    }
+});
+
+// =============================================
+// ローカルCSV読み込み時にテキストを保持
+// =============================================
+document.getElementById('csvFile').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        localUserCsv = ev.target.result;
+        updateFlowSteps();
+    };
+    reader.readAsText(file, 'UTF-8');
+    // 既存処理も実行
+    Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => processData(r.data) });
+});
+
+document.getElementById('salesFile').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        localSalesCsv = ev.target.result;
+        updateFlowSteps();
+    };
+    reader.readAsText(file, 'UTF-8');
+    Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => processSalesData(r.data) });
+});
 
 // =============================================
 // チャートヘルパー
