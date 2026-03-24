@@ -650,7 +650,8 @@ function processSalesData(rawData) {
         const user     = normalizeName(String(row.USER||'').trim());
         const sales    = parseInt(row.SALES)||0;
         const currency = (row.CURRENCY||'').trim().toUpperCase();
-        if (!user || sales <= 0 || currency !== 'JPY') return;
+        // CURRENCY が JPY または空（Apple Pay / Google Pay 等）の行を集計対象とする
+        if (!user || sales <= 0 || (currency !== 'JPY' && currency !== '')) return;
 
         salesMap[user]      = (salesMap[user]||0) + sales;
         salesCountMap[user] = (salesCountMap[user]||0) + 1;
@@ -934,13 +935,31 @@ function renderSegmentChart() {
 // =============================================
 // チャート: 決済手段
 // =============================================
-const ML={PURCHASE_BY_APPLE_PAYMENT:'Apple Pay',PURCHASE_BY_GOOGLE_PAYMENT:'Google Pay',CREDIT_3D2:'クレジットカード',SOFTBANK_COLLECTIVE_PAYMENT_B:'SBまとめて',D_PAYMENT_CARRIER_WALLET:'d払い',BITCASH_SETTLEMENT:'BitCash'};
+const ML={
+    PURCHASE_BY_APPLE_PAYMENT:'Apple Pay',
+    PURCHASE_BY_GOOGLE_PAYMENT:'Google Pay',
+    APPLEPAYMENT:'Apple Pay',
+    GOOGLEPAYMENT:'Google Pay',
+    APPLE_PAYMENT:'Apple Pay',
+    GOOGLE_PAYMENT:'Google Pay',
+    APPLEPAY:'Apple Pay',
+    GOOGLEPAY:'Google Pay',
+    CREDIT_3D2:'クレジットカード',
+    SOFTBANK_COLLECTIVE_PAYMENT_B:'SBまとめて',
+    D_PAYMENT_CARRIER_WALLET:'d払い',
+    BITCASH_SETTLEMENT:'BitCash'
+};
+function resolveMethod(raw) {
+    if (!raw) return '不明';
+    const upper = raw.toUpperCase().replace(/[\s\-]/g,'_');
+    return ML[upper] || ML[raw] || raw;
+}
 const MC=['#38bdf8','#34d399','#f59e0b','#a78bfa','#fb7185','#67e8f9'];
 function renderMethodChart() {
     const empty=document.getElementById('methodEmpty');
     if (!salesRawData.length){empty.classList.remove('hidden');return;} empty.classList.add('hidden');
     const bm={};
-    salesRawData.forEach(r=>{const k=ML[r.method]||r.method||'不明';bm[k]=(bm[k]||0)+r.sales;});
+    salesRawData.forEach(r=>{const k=resolveMethod(r.method);bm[k]=(bm[k]||0)+r.sales;});
     const sorted=Object.entries(bm).sort((a,b)=>b[1]-a[1]);
     const labels=sorted.map(x=>x[0]),values=sorted.map(x=>x[1]),total=values.reduce((a,b)=>a+b,0);
     mkChart('methodChart','doughnut',
