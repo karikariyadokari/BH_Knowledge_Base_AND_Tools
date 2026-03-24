@@ -105,7 +105,7 @@
         <p id="kpi-plays-sub" class="text-slate-500 text-xs mt-1"></p>
     </div>
     <div class="card p-5 border-t-2 border-emerald-500">
-        <p class="text-slate-400 text-xs font-bold">推定売上 (ゲーム内通貨)</p>
+        <p class="text-slate-400 text-xs font-bold">推定売上 (Bcoin)</p>
         <p id="kpi-revenue" class="text-3xl font-bold mt-1 text-emerald-400">-</p>
         <p id="kpi-revenue-sub" class="text-slate-500 text-xs mt-1"></p>
     </div>
@@ -137,8 +137,8 @@
 <div class="card p-5 mb-4">
     <div class="flex items-center justify-between mb-3">
         <div>
-            <p class="section-title mb-0">推定売上トレンド (ゲーム内通貨)</p>
-            <p class="text-xs text-slate-500 mt-0.5">プレイ手数 × 設定プレイ料金で算出</p>
+            <p class="section-title mb-0">推定売上トレンド (Bcoin)</p>
+            <p class="text-xs text-slate-500 mt-0.5">プレイ手数 × 設定プレイ料金で算出 ／ 円換算: 100Bc = ¥240〜¥320</p>
         </div>
         <div class="flex gap-2 no-print">
             <button class="tab-btn active" onclick="setRevTab('daily',this)">日次</button>
@@ -240,12 +240,20 @@
 
 <!-- プレイ料金パネル -->
 <div id="feePanel" class="hidden fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4 no-print">
-    <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg border border-amber-700/60">
-        <div class="p-5 border-b border-slate-700 flex justify-between items-center">
+    <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl border border-amber-700/60 flex flex-col" style="max-height:92vh">
+        <div class="p-5 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
             <h2 class="text-base font-bold text-white">🪙 プレイ料金設定</h2>
             <button onclick="toggleFeePanel()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
         </div>
-        <div class="p-5 space-y-4 text-sm">
+
+        <!-- タブ -->
+        <div class="flex gap-1 px-5 pt-4 flex-shrink-0">
+            <button id="feeTab-current" class="tab-btn active" onclick="switchFeeTab('current')">現在の設定</button>
+            <button id="feeTab-template" class="tab-btn" onclick="switchFeeTab('template')">テンプレート管理</button>
+        </div>
+
+        <!-- === 現在の設定タブ === -->
+        <div id="feePanelCurrent" class="p-5 space-y-4 text-sm overflow-y-auto flex-1">
             <div class="bg-slate-900/50 p-3 rounded border border-slate-700 text-xs text-slate-400">
                 CSVにはプレイ料金が含まれないため手動設定してください。<br>
                 <strong class="text-white">設定料金 × プレイ手数</strong> で推定売上を算出します。
@@ -257,6 +265,11 @@
                     <span class="text-slate-400 text-xs">コイン / プレイ</span>
                 </div>
             </div>
+            <!-- テンプレート適用 -->
+            <div id="feeTemplateApplyArea" class="hidden">
+                <label class="block text-xs font-bold text-slate-300 mb-1">テンプレートから読み込む</label>
+                <div class="flex gap-2 flex-wrap" id="feeTemplateChips"></div>
+            </div>
             <div>
                 <label class="block text-xs font-bold text-slate-300 mb-1">ブース個別設定（空欄=デフォルト使用）</label>
                 <div id="boothFeeList" class="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
@@ -264,7 +277,31 @@
                 </div>
             </div>
         </div>
-        <div class="p-4 border-t border-slate-700 flex justify-between">
+
+        <!-- === テンプレート管理タブ === -->
+        <div id="feePanelTemplate" class="hidden p-5 space-y-4 text-sm overflow-y-auto flex-1">
+            <div class="bg-slate-900/50 p-3 rounded border border-slate-700 text-xs text-slate-400">
+                現在の料金設定をテンプレートとして保存しておくと、別のブース構成でも素早く適用できます。<br>
+                テンプレートデータはローカルストレージおよびDriveに同期されます。
+            </div>
+            <!-- 新規保存 -->
+            <div class="bg-slate-700/40 rounded-lg border border-slate-600 p-4">
+                <p class="text-xs font-bold text-slate-300 mb-2">現在の設定をテンプレートとして保存</p>
+                <div class="flex gap-2 items-center flex-wrap">
+                    <input type="text" id="newTemplateName" class="input-field text-sm flex-1" placeholder="テンプレート名（例: 100円均一、VIPブース）" style="min-width:160px">
+                    <button onclick="saveCurrentAsTemplate()" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold py-2 px-4 rounded whitespace-nowrap">💾 保存</button>
+                </div>
+            </div>
+            <!-- テンプレート一覧 -->
+            <div>
+                <p class="text-xs font-bold text-slate-300 mb-2">保存済みテンプレート</p>
+                <div id="templateList" class="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                    <p class="text-slate-500 text-xs italic">まだテンプレートがありません</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-700 flex justify-between flex-shrink-0">
             <button onclick="resetFees()" class="text-slate-400 hover:text-white text-xs font-bold py-2 px-3 rounded">全リセット</button>
             <div class="flex gap-2">
                 <button onclick="toggleFeePanel()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded text-sm">閉じる</button>
@@ -332,6 +369,7 @@
             <section>
                 <h3 class="text-base font-bold text-amber-400 border-b border-slate-700 pb-1 mb-2">2. プレイ料金設定</h3>
                 <p>「🪙 プレイ料金設定」でゲーム内通貨のコストを設定。デフォルト料金は全ブース共通、ブース個別設定で上書き可。「適用して更新」で再計算されます。</p>
+                <p class="mt-2 text-slate-400">「テンプレート管理」タブでは現在の料金設定に名前を付けて保存し、後から素早く適用できます。テンプレートデータはローカルストレージとDriveに同期されます。</p>
             </section>
             <section>
                 <h3 class="text-base font-bold text-sky-400 border-b border-slate-700 pb-1 mb-2">3. ブース別詳細</h3>
@@ -362,6 +400,7 @@ const GC = '#1e293b', TC = '#64748b';
 // ============================================================
 let db           = {};
 let feeSettings  = {};
+let feeTemplates = {};   // { templateName: { defaultFee, settings: {mac: fee} } }
 let heatMode     = 'plays';
 let revTabMode   = 'daily';
 let sortState    = { col: 'plays', dir: 'desc' };
@@ -418,6 +457,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (parsed && parsed.db) {
                 db = parsed.db;
                 if (parsed.feeSettings) feeSettings = parsed.feeSettings;
+                if (parsed.feeTemplates) feeTemplates = parsed.feeTemplates;
                 if (parsed.defaultFee != null) {
                     const el = document.getElementById('defaultFee');
                     if (el) el.value = parsed.defaultFee;
@@ -624,8 +664,8 @@ function renderAll(fs='', fe='', ftag='') {
     const nB   = bl.length, nAct = bl.filter(b=>b.plays>0).length;
     document.getElementById('kpi-plays').textContent      = totP.toLocaleString();
     document.getElementById('kpi-plays-sub').textContent  = `Win: ${totW.toLocaleString()} / Lose: ${(totP-totW).toLocaleString()}`;
-    document.getElementById('kpi-revenue').textContent    = totR.toLocaleString() + ' coins';
-    document.getElementById('kpi-revenue-sub').textContent= nB ? `平均 ${Math.floor(totR/nB).toLocaleString()} coins/ブース` : '';
+    document.getElementById('kpi-revenue').textContent    = totR.toLocaleString() + ' Bc';
+    document.getElementById('kpi-revenue-sub').textContent= bcoinToJpy(totR) + '（決済方法により変動）';
     document.getElementById('kpi-avg-turns').textContent  = totA>0 ? (totP/totA).toFixed(2)+' 手' : '-';
     document.getElementById('kpi-booths').textContent     = nB + ' ブース';
     document.getElementById('kpi-booths-sub').textContent = `稼働中: ${nAct} ブース`;
@@ -859,6 +899,16 @@ function toggleAllBooths(open) {
     document.querySelectorAll('.chevron').forEach(el=>el.classList.toggle('open',open));
 }
 
+// Bcoin → 円換算 (100Bcoin = 240〜320円)
+const JPY_LO = 2.40;   // 円/Bcoin (最安: 100Bc=240円)
+const JPY_HI = 3.20;   // 円/Bcoin (最高: 100Bc=320円)
+function bcoinToJpy(coins) {
+    const lo = Math.round(coins * JPY_LO);
+    const hi = Math.round(coins * JPY_HI);
+    if (lo === hi) return `¥${lo.toLocaleString()}`;
+    return `¥${lo.toLocaleString()}〜¥${hi.toLocaleString()}`;
+}
+
 function renderTable() {
     const acc = document.getElementById('boothAccordion');
     if (!acc) return;
@@ -874,10 +924,11 @@ function renderTable() {
     const ed = document.getElementById('endDate').value;
 
     acc.innerHTML = entries.map(b => {
-        const sid     = b.mac.replace(/[^a-zA-Z0-9]/g,'_');
-        const isOpen  = openBooths.has(b.mac);
-        const avgStr  = b.acq>0 ? (b.plays/b.acq).toFixed(2)+' 手' : '-';
-        const totErr  = b.e1+b.e2+b.e3+b.e4;
+        const sid    = b.mac.replace(/[^a-zA-Z0-9]/g,'_');
+        const isOpen = openBooths.has(b.mac);
+        const avgStr = b.acq>0 ? (b.plays/b.acq).toFixed(2)+' 手' : '-';
+        const totErr = b.e1+b.e2+b.e3+b.e4;
+        const jpyStr = bcoinToJpy(b.revenue);
 
         const m      = db[b.mac];
         const fdates = m ? Object.keys(m.logs).filter(d=>(!sd||d>=sd)&&(!ed||d<=ed)).sort().reverse() : [];
@@ -885,7 +936,9 @@ function renderTable() {
         const dateRows = fdates.map(d => {
             const lg=m.logs[d], w=lg.w||0, a=lg.a||0, l=lg.l||0;
             const plays=w+l, acq=w+a;
-            const avgD = acq>0 ? (plays/acq).toFixed(2)+' 手' : '-';
+            const avgD   = acq>0 ? (plays/acq).toFixed(2)+' 手' : '-';
+            const dayRev = plays * getFee(b.mac);
+            const dayJpy = bcoinToJpy(dayRev);
             return `<tr class="hover:bg-slate-800/50 text-xs border-b border-slate-700/30">
                 <td class="px-3 py-2 text-slate-400 whitespace-nowrap">${d}</td>
                 <td class="px-3 py-2 text-emerald-400 font-bold text-center">${w}</td>
@@ -898,8 +951,12 @@ function renderTable() {
                 <td class="px-3 py-2 text-red-400 text-center">${lg.e3||0}</td>
                 <td class="px-3 py-2 text-red-400 text-center">${lg.e4||0}</td>
                 <td class="px-3 py-2 text-yellow-300 font-bold text-center">${avgD}</td>
+                <td class="px-3 py-2 text-emerald-300 font-bold text-center whitespace-nowrap">${dayRev.toLocaleString()} Bc</td>
+                <td class="px-3 py-2 text-center whitespace-nowrap">
+                    <span class="text-slate-400">${dayJpy}</span>
+                </td>
             </tr>`;
-        }).join('') || '<tr><td colspan="11" class="text-center text-slate-600 py-4 text-xs">データなし</td></tr>';
+        }).join('') || '<tr><td colspan="13" class="text-center text-slate-600 py-4 text-xs">データなし</td></tr>';
 
         return `<div class="card overflow-hidden">
             <div class="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-slate-700/30"
@@ -925,7 +982,11 @@ function renderTable() {
                     <div class="text-center hidden sm:block"><div class="text-slate-500">Win</div><div class="text-emerald-400 font-bold">${b.w.toLocaleString()}</div></div>
                     <div class="text-center hidden sm:block"><div class="text-slate-500">Assist</div><div class="text-amber-400 font-bold">${b.a.toLocaleString()}</div></div>
                     <div class="text-center hidden md:block"><div class="text-slate-500">平均獲得</div><div class="text-yellow-300 font-bold">${avgStr}</div></div>
-                    <div class="text-center hidden md:block"><div class="text-slate-500">推定売上</div><div class="text-emerald-300 font-bold">${b.revenue.toLocaleString()}</div></div>
+                    <div class="text-center hidden md:block">
+                        <div class="text-slate-500">推定売上</div>
+                        <div class="text-emerald-300 font-bold">${b.revenue.toLocaleString()} Bc</div>
+                        <div class="text-slate-400 text-[10px] mt-0.5">${jpyStr}</div>
+                    </div>
                     <div class="text-center hidden lg:block"><div class="text-slate-500">エラー</div><div class="${totErr>0?'text-red-400':'text-slate-600'} font-bold">${totErr}</div></div>
                     <button onclick="event.stopPropagation();deleteBooth('${esc(b.mac)}')"
                         class="no-print text-red-500 hover:text-red-300 text-xs font-bold px-2 py-1 rounded border border-red-800/50 hover:bg-red-900/30 ml-1">削除</button>
@@ -933,7 +994,7 @@ function renderTable() {
             </div>
             <div id="bb_${sid}" class="booth-body${isOpen?' open':''}" data-mac="${esc(b.mac)}">
                 <div class="overflow-x-auto border-t border-slate-700/50">
-                    <table class="w-full text-left" style="min-width:680px">
+                    <table class="w-full text-left" style="min-width:860px">
                         <thead class="bg-slate-900/60 text-xs text-slate-400">
                             <tr>
                                 <th class="px-3 py-2 font-bold">日付</th>
@@ -947,10 +1008,15 @@ function renderTable() {
                                 <th class="px-3 py-2 font-bold text-red-400 text-center" title="ERROR">Err</th>
                                 <th class="px-3 py-2 font-bold text-red-400 text-center" title="その他ERRORイベント">Err:他</th>
                                 <th class="px-3 py-2 font-bold text-yellow-300 text-center">平均獲得手数</th>
+                                <th class="px-3 py-2 font-bold text-emerald-300 text-center">推定売上(Bc)</th>
+                                <th class="px-3 py-2 font-bold text-slate-300 text-center" title="100Bcoin = 240〜320円（決済方法により異なる）">推定売上(円)</th>
                             </tr>
                         </thead>
                         <tbody>${dateRows}</tbody>
                     </table>
+                </div>
+                <div class="px-4 py-1.5 bg-slate-900/30 border-t border-slate-700/30 text-[10px] text-slate-500">
+                    ※ 円換算: 100Bcoin = 240〜320円（決済方法により異なる）
                 </div>
             </div>
         </div>`;
@@ -976,8 +1042,21 @@ function getFee(mac)     { return feeSettings[mac]!=null ? feeSettings[mac] : ge
 function toggleFeePanel() {
     const el = document.getElementById('feePanel');
     el.classList.toggle('hidden');
-    if (!el.classList.contains('hidden')) renderBoothFeeList();
+    if (!el.classList.contains('hidden')) {
+        switchFeeTab('current');
+        renderBoothFeeList();
+        renderFeeTemplateChips();
+    }
 }
+
+function switchFeeTab(tab) {
+    document.getElementById('feePanelCurrent').classList.toggle('hidden', tab !== 'current');
+    document.getElementById('feePanelTemplate').classList.toggle('hidden', tab !== 'template');
+    document.getElementById('feeTab-current').classList.toggle('active', tab === 'current');
+    document.getElementById('feeTab-template').classList.toggle('active', tab === 'template');
+    if (tab === 'template') renderTemplateList();
+}
+
 function renderBoothFeeList() {
     const c = document.getElementById('boothFeeList');
     const macs = Object.keys(db);
@@ -993,6 +1072,130 @@ function renderBoothFeeList() {
         </div>`;
     }).join('');
 }
+
+function renderFeeTemplateChips() {
+    const names = Object.keys(feeTemplates);
+    const area = document.getElementById('feeTemplateApplyArea');
+    const chips = document.getElementById('feeTemplateChips');
+    if (!names.length) { area.classList.add('hidden'); return; }
+    area.classList.remove('hidden');
+    chips.innerHTML = names.map(name =>
+        `<button onclick="applyTemplate('${esc(name)}')"
+            class="bg-amber-900/40 hover:bg-amber-800/60 border border-amber-700/60 text-amber-300 text-xs font-bold py-1 px-3 rounded-full transition-all">
+            📋 ${esc(name)}
+        </button>`
+    ).join('');
+}
+
+function renderTemplateList() {
+    const el = document.getElementById('templateList');
+    const names = Object.keys(feeTemplates);
+    if (!names.length) {
+        el.innerHTML = '<p class="text-slate-500 text-xs italic">まだテンプレートがありません</p>';
+        return;
+    }
+    el.innerHTML = names.map(name => {
+        const tmpl = feeTemplates[name];
+        const overrideCount = Object.keys(tmpl.settings||{}).length;
+        const overrideSummary = overrideCount > 0
+            ? `<span class="text-amber-400">${overrideCount} ブース個別設定あり</span>`
+            : `<span class="text-slate-500">個別設定なし</span>`;
+        return `<div class="bg-slate-900/50 rounded-lg border border-slate-700 p-3">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex-1 min-w-0">
+                    <p class="text-white text-sm font-bold truncate">${esc(name)}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">デフォルト: <span class="text-amber-300 font-bold">${tmpl.defaultFee ?? 100} コイン</span> / ${overrideSummary}</p>
+                </div>
+                <div class="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                    <button onclick="applyTemplate('${esc(name)}')"
+                        class="bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-bold py-1 px-3 rounded">適用</button>
+                    <button onclick="editTemplate('${esc(name)}')"
+                        class="bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold py-1 px-3 rounded">編集</button>
+                    <button onclick="deleteTemplate('${esc(name)}')"
+                        class="bg-red-900/50 hover:bg-red-900 text-red-300 text-xs font-bold py-1 px-2 rounded border border-red-800/50">削除</button>
+                </div>
+            </div>
+            <div id="tmplEdit_${esc(name).replace(/[^a-zA-Z0-9]/g,'_')}" class="hidden mt-3 space-y-2">
+                <div class="flex gap-2 items-center">
+                    <span class="text-xs text-slate-400 w-28 flex-shrink-0">デフォルト料金</span>
+                    <input type="number" min="0" value="${tmpl.defaultFee ?? 100}"
+                        class="w-24 bg-slate-700 border border-slate-600 text-amber-300 text-sm font-bold rounded px-2 py-1 outline-none focus:border-amber-400"
+                        oninput="feeTemplates['${esc(name)}'].defaultFee=parseInt(this.value)||0; saveTemplatesLocal()">
+                    <span class="text-slate-500 text-xs">コイン</span>
+                </div>
+                ${Object.keys(db).map(mac => {
+                    const v = tmpl.settings?.[mac] ?? '';
+                    return `<div class="flex items-center gap-2">
+                        <span class="text-slate-300 text-xs flex-1 truncate">${esc(db[mac].name||mac)}</span>
+                        <input type="number" min="0" value="${v}" placeholder="${tmpl.defaultFee ?? 100}"
+                            class="w-24 bg-slate-700 border border-slate-600 text-amber-300 text-xs font-bold rounded px-2 py-1 outline-none focus:border-amber-400"
+                            oninput="updateTemplateBoothFee('${esc(name)}','${esc(mac)}',this.value)">
+                        <span class="text-slate-500 text-xs">コイン</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function updateTemplateBoothFee(name, mac, val) {
+    if (!feeTemplates[name]) return;
+    if (!feeTemplates[name].settings) feeTemplates[name].settings = {};
+    feeTemplates[name].settings[mac] = val !== '' ? (parseInt(val)||0) : undefined;
+    if (feeTemplates[name].settings[mac] === undefined) delete feeTemplates[name].settings[mac];
+    saveTemplatesLocal();
+}
+
+function saveTemplatesLocal() {
+    try { localStorage.setItem(DB_KEY, JSON.stringify({db, feeSettings, feeTemplates, defaultFee: parseInt(document.getElementById('defaultFee')?.value)||100})); } catch(_) {}
+}
+
+function saveCurrentAsTemplate() {
+    const name = document.getElementById('newTemplateName').value.trim();
+    if (!name) { alert('テンプレート名を入力してください。'); return; }
+    if (feeTemplates[name] && !confirm(`「${name}」は既に存在します。上書きしますか？`)) return;
+    feeTemplates[name] = {
+        defaultFee: getDefaultFee(),
+        settings: JSON.parse(JSON.stringify(Object.fromEntries(
+            Object.entries(feeSettings).filter(([,v]) => v != null)
+        )))
+    };
+    document.getElementById('newTemplateName').value = '';
+    saveTemplatesLocal();
+    renderTemplateList();
+    renderFeeTemplateChips();
+    // ドライブ自動同期
+    const url = localStorage.getItem(GAS_URL_KEY)||'';
+    if (url) uploadToDrive(true);
+}
+
+function applyTemplate(name) {
+    const tmpl = feeTemplates[name];
+    if (!tmpl) return;
+    const dfEl = document.getElementById('defaultFee');
+    if (dfEl) dfEl.value = tmpl.defaultFee ?? 100;
+    feeSettings = JSON.parse(JSON.stringify(tmpl.settings || {}));
+    renderBoothFeeList();
+    renderFeeTemplateChips();
+    alert(`テンプレート「${name}」を適用しました。\n「適用して更新」ボタンで売上を再計算してください。`);
+}
+
+function editTemplate(name) {
+    const sid = esc(name).replace(/[^a-zA-Z0-9]/g,'_');
+    const el = document.getElementById('tmplEdit_' + sid);
+    if (el) el.classList.toggle('hidden');
+}
+
+function deleteTemplate(name) {
+    if (!confirm(`テンプレート「${name}」を削除しますか？`)) return;
+    delete feeTemplates[name];
+    saveTemplatesLocal();
+    renderTemplateList();
+    renderFeeTemplateChips();
+    const url = localStorage.getItem(GAS_URL_KEY)||'';
+    if (url) uploadToDrive(true);
+}
+
 function resetFees() { feeSettings={}; renderBoothFeeList(); }
 function applyFees() { toggleFeePanel(); renderAll(); }
 
@@ -1000,7 +1203,7 @@ function applyFees() { toggleFeePanel(); renderAll(); }
 // 永続化
 // ============================================================
 function persistAndRender(autoSync=false) {
-    try { localStorage.setItem(DB_KEY, JSON.stringify({db, feeSettings, defaultFee: parseInt(document.getElementById('defaultFee')?.value)||100})); } catch(_) {}
+    try { localStorage.setItem(DB_KEY, JSON.stringify({db, feeSettings, feeTemplates, defaultFee: parseInt(document.getElementById('defaultFee')?.value)||100})); } catch(_) {}
     renderAll();
     if (autoSync) uploadToDrive(true);
 }
@@ -1086,7 +1289,7 @@ async function uploadToDrive(isAuto=false) {
     try{
         // 楽観的ロック: 取得時のバージョンを一緒に送る
         const defaultFee=parseInt(document.getElementById('defaultFee')?.value)||100;
-        const payload=JSON.stringify({db,feeSettings,defaultFee,baseVersion:serverVersion});
+        const payload=JSON.stringify({db,feeSettings,feeTemplates,defaultFee,baseVersion:serverVersion});
         const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:payload,redirect:'follow'});
         const json=await res.json();
 
@@ -1100,6 +1303,7 @@ async function uploadToDrive(isAuto=false) {
             )){
                 if(json.serverData) db=clientSideMerge(json.serverData,db);
                 if(json.serverFeeSettings) feeSettings=clientSideMergeFees(json.serverFeeSettings,feeSettings);
+                if(json.serverFeeTemplates && typeof json.serverFeeTemplates==='object') feeTemplates=Object.assign({},json.serverFeeTemplates,feeTemplates);
                 if(json.serverDefaultFee != null){
                     const el=document.getElementById('defaultFee');
                     if(el && !document.getElementById('defaultFee').value) el.value=json.serverDefaultFee;
@@ -1145,6 +1349,7 @@ async function syncFromDrive() {
         if(!Object.keys(loaded).length){setSyncStatus('error','⚠️ 有効なブースデータがありません。');return;}
         db=loaded;
         if(json.feeSettings && typeof json.feeSettings==='object') feeSettings=json.feeSettings;
+        if(json.feeTemplates && typeof json.feeTemplates==='object') feeTemplates=json.feeTemplates;
         if(json.defaultFee != null){
             const el=document.getElementById('defaultFee');
             if(el) el.value=json.defaultFee;
