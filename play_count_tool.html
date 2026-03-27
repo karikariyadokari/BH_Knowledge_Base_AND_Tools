@@ -313,6 +313,7 @@
     font-size: 0.85rem;
     font-family: 'JetBrains Mono', monospace;
     color: var(--text);
+    word-break: break-all;
   }
 
   .plays-list {
@@ -422,20 +423,20 @@
 
   <div class="field time-row">
     <div>
-      <label>プレイ開始時刻（JST）</label>
+      <label>プレイ開始時刻（JST）<span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal; margin-left:4px;">※特定プレイを追う場合</span></label>
       <div class="time-text-wrap">
         <input type="text" class="time-text-input" id="startTime"
-               placeholder="27 Mar 2026 22:20:45"
+               placeholder="空欄で全期間対象"
                oninput="onTimeInput('startTime','startBadge')" autocomplete="off">
         <span class="time-parsed-badge" id="startBadge"></span>
       </div>
       <div class="time-note">管理パネルの時刻をそのままペースト可</div>
     </div>
     <div>
-      <label>プレイ終了時刻（JST）</label>
+      <label>プレイ終了時刻（JST）<span style="color:var(--text-muted); font-size:0.7rem; font-weight:normal; margin-left:4px;">※任意</span></label>
       <div class="time-text-wrap">
         <input type="text" class="time-text-input" id="endTime"
-               placeholder="27 Mar 2026 22:35:00"
+               placeholder="空欄で全期間対象"
                oninput="onTimeInput('endTime','endBadge')" autocomplete="off">
         <span class="time-parsed-badge" id="endBadge"></span>
       </div>
@@ -468,7 +469,7 @@
   </div>
   <div class="meta-grid">
     <div class="meta-item">
-      <div class="meta-label">検索期間（JST）</div>
+      <div class="meta-label">検索対象 (期間 または Room ID)</div>
       <div class="meta-value" id="rRange">—</div>
     </div>
     <div class="meta-item">
@@ -628,68 +629,106 @@ function run() {
   const query    = searchMode === 'name'
     ? document.getElementById('playerName').value.trim()
     : document.getElementById('playerId').value.trim();
-  const startUTC = parseTimeText(document.getElementById('startTime').value);
-  const endUTC   = parseTimeText(document.getElementById('endTime').value);
+    
+  const startRaw = document.getElementById('startTime').value.trim();
+  const endRaw   = document.getElementById('endTime').value.trim();
+  const startUTC = startRaw ? parseTimeText(startRaw) : null;
+  const endUTC   = endRaw   ? parseTimeText(endRaw)   : null;
+  
   const tolSec   = parseInt(document.getElementById('tolerance').value) || 30;
 
   if (!csvData)          { showErr('CSVファイルを選択してください。'); return; }
   if (!query)            { showErr(searchMode === 'name' ? 'プレイヤー名を入力してください。' : 'プレイヤーIDを入力してください。'); return; }
-  if (!startUTC)         { showErr('開始時刻の形式が認識できません。'); return; }
-  if (!endUTC)           { showErr('終了時刻の形式が認識できません。'); return; }
-  if (startUTC > endUTC) { showErr('開始時刻が終了時刻より後になっています。'); return; }
+  
+  if (startRaw && !startUTC) { showErr('開始時刻の形式が認識できません。'); return; }
+  if (endRaw && !endUTC)     { showErr('終了時刻の形式が認識できません。'); return; }
+  if (startUTC && endUTC && startUTC > endUTC) { showErr('開始時刻が終了時刻より後になっています。'); return; }
 
-  const bufMs    = tolSec * 1000;
-  const startLow = new Date(startUTC.getTime() - bufMs);
-  const endHigh  = new Date(endUTC.getTime()   + bufMs);
-
+  const bufMs = tolSec * 1000;
   let rows;
   try { rows = parseCSV(csvData); } catch(e) { showErr('CSV の解析に失敗しました: ' + e.message); return; }
 
-  // 1. 指定期間内のPLAYINGイベントから、対象プレイヤーのroom_idを抽出
   const targetRooms = new Map();
+  let foundRoomId = null; // 開始時刻が指定された場合に特定したroom_idを保持
+
+  // 1. 対象のroom_idを特定する
+  if (startUTC) {
+    // 【開始時刻あり】指定時刻に最も近い PLAYING ログの room_id を1つだけ特定
+    let closestDiff = Infinity;
+    let matchedTarget = null;
+
+    rows.forEach(r => {
+      if (r.TYPE === 'PLAYING') {
+        const players = extractPlayers(r.INFO);
+        const target = searchMode === 'name'
+          ? players.find(p => p.name === query)
+          : players.find(p => p.id   === query);
+        
+        if (target) {
+          const t = new Date(r.TIME).getTime();
+          const diff = Math.abs(t - startUTC.getTime());
+          // 許容幅の中で最も時刻が近いものを1つ選ぶ
+          if (diff <= bufMs && diff < closestDiff) {
+            closestDiff = diff;
+            foundRoomId = extractRoomId(r.INFO);
+            matchedTarget = target;
+          }
+        }
+      }
+    });
+
+    if (foundRoomId) {
+      targetRooms.set(foundRoomId, matchedTarget);
+    }
+  } else {
+    // 【開始時刻なし】終了時刻（または全期間）までの全 PLAYING ログの room_id を収集
+    const endHigh = endUTC ? new Date(endUTC.getTime() + bufMs) : new Date(8640000000000000);
+    rows.forEach(r => {
+      if (r.TYPE === 'PLAYING') {
+        const players = extractPlayers(r.INFO);
+        const target = searchMode === 'name'
+          ? players.find(p => p.name === query)
+          : players.find(p => p.id   === query);
+        
+        if (target) {
+          const t = new Date(r.TIME);
+          if (t <= endHigh) {
+            const roomId = extractRoomId(r.INFO);
+            if (roomId) targetRooms.set(roomId, target);
+          }
+        }
+      }
+    });
+  }
+
+  // 2. 抽出したroom_idに紐づくターンの終了(CONTROL_RECEIVED_END_RESULT)を集計
+  const plays = [];
   rows.forEach(r => {
-    if (r.TYPE === 'PLAYING') {
-      const players = extractPlayers(r.INFO);
-      const target = searchMode === 'name'
-        ? players.find(p => p.name === query)
-        : players.find(p => p.id   === query);
-      
-      if (target) {
-        const t = new Date(r.TIME);
-        if (t >= startLow && t <= endHigh) {
-          const roomId = extractRoomId(r.INFO);
-          if (roomId) targetRooms.set(roomId, target);
+    if (r.TYPE === 'CONTROL_RECEIVED_END_RESULT') {
+      const roomId = extractRoomId(r.INFO);
+      if (roomId && targetRooms.has(roomId)) {
+        // 開始時刻指定モードの場合は、そのセッションの全容が見たいはずなので終了時刻でのカットはしない
+        // (終了時刻モードの場合は、終了時刻以降のログは弾く)
+        const playTime = new Date(r.TIME);
+        const endHigh = endUTC ? new Date(endUTC.getTime() + bufMs) : new Date(8640000000000000);
+        if (startUTC || playTime <= endHigh) {
+          const result = extractResult(r.INFO);
+          const playTimeJST = new Date(playTime.getTime() + 9 * 60 * 60 * 1000);
+          
+          plays.push({
+            timeJST: playTimeJST,
+            roomId: roomId,
+            result: result,
+            target: targetRooms.get(roomId)
+          });
         }
       }
     }
   });
 
-  // 2. 抽出したroom_idに紐づくターンの終了(CONTROL_RECEIVED_END_RESULT)を集計
-  const plays = [];
-  rows.forEach(r => {
-    // CSV上ではCONTROL_RECEIVED_END_RESULTに勝敗(result)が含まれている
-    if (r.TYPE === 'CONTROL_RECEIVED_END_RESULT') {
-      const roomId = extractRoomId(r.INFO);
-      if (roomId && targetRooms.has(roomId)) {
-        const result = extractResult(r.INFO); // 1 = WIN, 0 = LOSE
-        const playTime = new Date(r.TIME);
-        const playTimeJST = new Date(playTime.getTime() + 9 * 60 * 60 * 1000);
-        
-        plays.push({
-          timeJST: playTimeJST,
-          roomId: roomId,
-          result: result,
-          target: targetRooms.get(roomId)
-        });
-      }
-    }
-  });
-
-  // 3. 時系列順（古い順）にソートして番号を振る
   plays.sort((a, b) => a.timeJST - b.timeJST);
   plays.forEach((p, idx) => p.num = idx + 1);
 
-  // 表示処理
   const winsCount = plays.filter(p => p.result === 1).length;
   const loseCount = plays.filter(p => p.result === 0).length;
 
@@ -717,12 +756,25 @@ function run() {
     const S  = String(jst.getUTCSeconds()).padStart(2,'0');
     return `${Y}/${Mo}/${D} ${H}:${Mi}:${S}`;
   };
-  document.getElementById('rRange').innerHTML = fmt(startUTC) + ' JST<br>〜 ' + fmt(endUTC) + ' JST';
+
+  // 検索対象の表示出し分け
+  let rangeStr = '';
+  if (startUTC) {
+    if (foundRoomId) {
+      rangeStr = `<span style="color:var(--accent)">Room ID: ${foundRoomId}</span><br><span style="font-size:0.75rem;color:var(--text-muted)">(${fmt(startUTC)} JST のプレイ)</span>`;
+    } else {
+      rangeStr = '一致するプレイなし';
+    }
+  } else {
+    if (!startUTC && !endUTC) rangeStr = '全期間 (指定なし)';
+    else if (!startUTC)       rangeStr = '〜 ' + fmt(endUTC) + ' JST';
+  }
+  document.getElementById('rRange').innerHTML = rangeStr;
 
   const warnBox = document.getElementById('warnBox');
   if (plays.length === 0) {
     warnBox.style.display = 'block';
-    warnBox.textContent = '⚠ 条件に一致するプレイが見つかりませんでした。プレイヤー情報・時刻・許容幅を確認してください。';
+    warnBox.textContent = '⚠ 条件に一致するプレイが見つかりませんでした。プレイヤー情報や時刻を確認してください。';
   } else {
     warnBox.style.display = 'none';
   }
