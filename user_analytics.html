@@ -104,6 +104,11 @@
                 <span class="text-xs font-bold text-emerald-300 ml-2">2. 売上CSV:</span>
                 <input type="file" id="salesFile" accept=".csv" class="text-sm text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer">
             </div>
+            <div class="bg-violet-900/50 p-1.5 rounded-md border border-violet-700 flex items-center gap-2">
+                <span class="text-xs font-bold text-violet-300 ml-2">3. ブースログCSV (複数可):</span>
+                <input type="file" id="boothFiles" accept=".csv" multiple class="text-sm text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:bg-violet-600 file:text-white hover:file:bg-violet-500 cursor-pointer">
+                <span id="boothStatus" class="text-xs text-violet-400 font-bold hidden"></span>
+            </div>
         </div>
     </div>
 </div>
@@ -190,11 +195,11 @@
         <p id="kpi-avg-lv" class="text-3xl font-bold mt-1 text-white">-</p>
     </div>
     <div class="card p-5 border-l-4 border-yellow-500">
-        <p class="text-slate-400 text-xs font-bold">離脱リスク (10日&Lv≤10)</p>
+        <p class="text-slate-400 text-xs font-bold">離脱リスク (最終プレイ7〜13日 or 登録7〜13日&Lv≤10)</p>
         <p id="kpi-risk" class="text-3xl font-bold mt-1 text-yellow-400">-</p>
     </div>
     <div class="card p-5 border-l-4 border-red-500">
-        <p class="text-slate-400 text-xs font-bold">離脱状態 (20日&Lv≤10)</p>
+        <p class="text-slate-400 text-xs font-bold">離脱状態 (最終プレイ14日以上 or 登録14日以上&Lv≤10)</p>
         <p id="kpi-churn" class="text-3xl font-bold mt-1 text-red-400">-</p>
     </div>
 </div>
@@ -395,7 +400,8 @@
                     <th class="px-5 py-3 font-bold border-b border-slate-700 sortable desc" data-col="lvNum" onclick="sortTable('lvNum',this)">LEVEL <span class="si"></span></th>
                     <th class="px-5 py-3 font-bold border-b border-slate-700 text-emerald-400 sortable" data-col="ltv" onclick="sortTable('ltv',this)">累計課金額 <span class="si"></span></th>
                     <th class="px-5 py-3 font-bold border-b border-slate-700 sortable" data-col="STATUS" onclick="sortTable('STATUS',this)">STATUS <span class="si"></span></th>
-                    <th class="px-5 py-3 font-bold border-b border-slate-700 sortable" data-col="days" onclick="sortTable('days',this)">経過日数 <span class="si"></span></th>
+                    <th class="px-5 py-3 font-bold border-b border-slate-700 sortable" data-col="days" onclick="sortTable('days',this)">登録経過日数 <span class="si"></span></th>
+                    <th class="px-5 py-3 font-bold border-b border-slate-700 sortable text-violet-300" data-col="lastPlayDays" onclick="sortTable('lastPlayDays',this)">最終プレイ <span class="si"></span></th>
                     <th class="px-5 py-3 font-bold border-b border-slate-700">課金回数</th>
                 </tr>
             </thead>
@@ -456,7 +462,7 @@
             <div>
                 <label class="block text-xs font-bold text-slate-300 mb-1">GAS ウェブアプリ URL</label>
                 <input type="text" id="gasUrl" class="input-field text-xs font-mono"
-                    placeholder="https://script.google.com/macros/s/XXXXX/exec">
+                    placeholder="https://script.google.com/macros/s/AKfycbz5MSzVaLILxQ2NHeaMT6RzMIIZlu90jBvh6crDMRzlo5CScieTsKambicub_9Smwn-/exec">
             </div>
 
             <!-- フロー説明 -->
@@ -541,17 +547,23 @@
 
                 <section>
                     <h3 class="text-lg font-bold text-sky-400 border-b border-slate-700 pb-2 mb-3">2. 離脱リスクの定義</h3>
-                    <p class="text-sm leading-relaxed mb-2">本ダッシュボードでは、以下のロジックに基づいてユーザーの離脱ステータスを自動判定し、ハイライト表示します。</p>
+                    <p class="text-sm leading-relaxed mb-2">本ダッシュボードでは、<strong>ブースログ（最終プレイ日時）</strong>と<strong>登録日＋レベル</strong>の両条件を OR で組み合わせて離脱ステータスを判定します。どちらか一方でも条件を満たすとステータスが付与されます。</p>
                     <ul class="list-none text-sm space-y-3 bg-slate-900/50 p-4 rounded-lg border border-slate-700">
                         <li class="flex items-start gap-2">
                             <span class="bg-yellow-900/50 text-yellow-300 border border-yellow-700 px-2 py-0.5 rounded text-xs whitespace-nowrap mt-0.5">リスク有</span>
-                            <span>初回ログインから <strong>10日以上経過</strong> しており、かつ <strong>レベルが10以下</strong> のユーザー。チュートリアル後に行き詰まっている可能性があります。</span>
+                            <span>以下のいずれかに該当するユーザー：<br>
+                            • ブースログの最終プレイ日時から <strong>7日以上14日未満</strong> 経過<br>
+                            • 登録日から <strong>7日以上14日未満</strong> 経過 かつ <strong>Lv≤10</strong></span>
                         </li>
                         <li class="flex items-start gap-2">
                             <span class="bg-red-900/50 text-red-300 border border-red-700 px-2 py-0.5 rounded text-xs whitespace-nowrap mt-0.5">離脱状態</span>
-                            <span>初回ログインから <strong>20日以上経過</strong> しており、かつ <strong>レベルが10以下</strong> のユーザー。自力での復帰が困難な状態とみなします。</span>
+                            <span>以下のいずれかに該当するユーザー：<br>
+                            • ブースログの最終プレイ日時から <strong>14日以上</strong> 経過<br>
+                            • 登録日から <strong>14日以上</strong> 経過 かつ <strong>Lv≤10</strong></span>
                         </li>
                     </ul>
+                    <p class="text-sm leading-relaxed mt-3 text-slate-400">※ブースログCSVが未読込の場合でも、登録日＋Lv条件による判定は機能します。ブースログを読み込むとより精度の高い判定になります。</p>
+                </section>
                 </section>
 
                 <section>
@@ -614,6 +626,32 @@ function normalizeName(name) {
         .replace(/[\s\u3000]+/g,'').replace(/[\u200B-\u200D\uFEFF]/g,'')
         .replace(/[^\wぁ-ゖァ-ヾ一-龯〜]/g,'').toLowerCase().trim();
 }
+
+// =============================================
+// 離脱ステータス判定ヘルパー
+//   戻り値: 'churn' | 'risk' | ''
+//   条件A: 最終プレイから14日以上 → churn
+//   条件B: 最終プレイから7〜13日  → risk
+//   条件C: 登録から14日以上 かつ Lv≤10 → churn（ブースログ未突合時も適用）
+//   条件D: 登録から7〜13日  かつ Lv≤10 → risk（同上）
+//   ※A/Cどちらか一方でも churn なら churn、B/Dどちらか一方でも risk なら risk
+// =============================================
+function getChurnStatus(d) {
+    const lpd  = (d.lastPlayDays !== null && d.lastPlayDays !== undefined) ? d.lastPlayDays : null;
+    const days = (d.days !== undefined && d.days >= 0) ? d.days : null;
+    const lv   = d.lvNum || 0;
+
+    const byBooth = lpd !== null
+        ? (lpd >= 14 ? 'churn' : lpd >= 7 ? 'risk' : '')
+        : '';
+    const byLogin = (days !== null && lv <= 10)
+        ? (days >= 14 ? 'churn' : days >= 7 ? 'risk' : '')
+        : '';
+
+    if (byBooth === 'churn' || byLogin === 'churn') return 'churn';
+    if (byBooth === 'risk'  || byLogin === 'risk')  return 'risk';
+    return '';
+}
 function toggleManual()    { document.getElementById('manualModal').classList.toggle('hidden'); }
 function toggleAlertPanel(){ document.getElementById('alertPanel').classList.toggle('hidden'); }
 function saveAlerts()      { toggleAlertPanel(); checkAlerts(); }
@@ -634,6 +672,7 @@ let sortCol = 'lvNum', sortDir = 'desc';
 let searchQuery = '';
 let heatMode = 'amount';
 let revTabMode = 'daily';
+let lastPlayMap      = {};    // { userId(string): dayjs } ブースログから構築
 
 // チャートインスタンス
 const charts = {};
@@ -686,6 +725,43 @@ function processSalesData(rawData) {
 }
 
 // =============================================
+// ブースログ処理
+// =============================================
+function processMachineLog(rawData) {
+    // PLAYINGイベントの INFO列から player_id を抽出し最終プレイ日時を記録
+    rawData.forEach(row => {
+        const type = (row.TYPE || '').trim();
+        if (type !== 'PLAYING') return;
+        const info = row.INFO || '';
+        const time = row.TIME || '';
+        if (!time) return;
+        const t = dayjs(time);
+        if (!t.isValid()) return;
+        // INFO は Python風シングルクォートJSON: {'player_id':'123456'}
+        const m = info.match(/['"]player_id['"]\s*:\s*['"]?(\d+)['"]?/);
+        if (!m) return;
+        const pid = m[1];
+        if (!lastPlayMap[pid] || t.isAfter(lastPlayMap[pid])) {
+            lastPlayMap[pid] = t;
+        }
+    });
+}
+
+function applyMachineLogToAllData() {
+    if (!allData.length) return;
+    const today = dayjs();
+    allData = allData.map(d => {
+        const userId = String(d.ID || '');
+        const lastPlay = lastPlayMap[userId] || null;
+        return {
+            ...d,
+            lastPlay,
+            lastPlayDays: lastPlay ? today.diff(lastPlay, 'day') : null
+        };
+    });
+}
+
+// =============================================
 // ユーザーデータ処理
 // =============================================
 function processData(rawData) {
@@ -697,11 +773,18 @@ function processData(rawData) {
         const lv = parseInt(d.LEVEL?.replace('LEVEL_','')||0);
         if (!umap.has(k) || lv > parseInt(umap.get(k).LEVEL?.replace('LEVEL_','')||0)) umap.set(k, d);
     });
-    allData = Array.from(umap.values()).map(d => ({
-        ...d,
-        lvNum: parseInt(d.LEVEL?.replace('LEVEL_','')||0),
-        date:  d['FIRST LOGIN AT'] ? dayjs(d['FIRST LOGIN AT']) : null
-    }));
+    allData = Array.from(umap.values()).map(d => {
+        const userId = String(d.ID || '');
+        const lastPlay = lastPlayMap[userId] || null;
+        const today = dayjs();
+        return {
+            ...d,
+            lvNum: parseInt(d.LEVEL?.replace('LEVEL_','')||0),
+            date:  d['FIRST LOGIN AT'] ? dayjs(d['FIRST LOGIN AT']) : null,
+            lastPlay: lastPlay,
+            lastPlayDays: lastPlay ? today.diff(lastPlay, 'day') : null
+        };
+    });
     const dates = allData.map(d=>d.date).filter(d=>d&&d.isValid());
     if (dates.length) {
         document.getElementById('startDate').value = dayjs.min(dates).format('YYYY-MM-DD');
@@ -758,11 +841,9 @@ function updateDashboard(data) {
     const today = dayjs();
     let riskC=0, churnC=0;
     ud.forEach(d => {
-        if (d.date && d.lvNum <= 10) {
-            const diff = today.diff(d.date,'day');
-            if (diff >= 20) churnC++;
-            else if (diff >= 10) riskC++;
-        }
+        const st = getChurnStatus({ ...d, days: d.date ? today.diff(d.date,'day') : -1 });
+        if (st === 'churn') churnC++;
+        else if (st === 'risk') riskC++;
     });
 
     document.getElementById('kpi-count').innerText   = count.toLocaleString()+'名';
@@ -779,7 +860,8 @@ function updateDashboard(data) {
         ...d,
         ltv:       salesMap[normalizeName(d.NAME)]||0,
         purchaseCount: salesCountMap[normalizeName(d.NAME)]||0,
-        days:      d.date ? today.diff(d.date,'day') : -1
+        days:      d.date ? today.diff(d.date,'day') : -1,
+        lastPlayDays: d.lastPlayDays
     }));
     renderTable();
     checkAlerts();
@@ -1262,10 +1344,18 @@ function renderTable() {
         else if(d.ltv>0)segB='<span class="badge-minnow ml-1">🐟</span>';
 
         let rkB='';
-        if(d.lvNum<=10&&d.days>=0){
-            if(d.days>=20)rkB='<span class="bg-red-900/50 text-red-300 border border-red-700 px-2 py-0.5 rounded text-xs ml-1">離脱状態</span>';
-            else if(d.days>=10)rkB='<span class="bg-yellow-900/50 text-yellow-300 border border-yellow-700 px-2 py-0.5 rounded text-xs ml-1">リスク有</span>';
-        }
+        const st = getChurnStatus(d);
+        if (st === 'churn') rkB='<span class="bg-red-900/50 text-red-300 border border-red-700 px-2 py-0.5 rounded text-xs ml-1">離脱状態</span>';
+        else if (st === 'risk') rkB='<span class="bg-yellow-900/50 text-yellow-300 border border-yellow-700 px-2 py-0.5 rounded text-xs ml-1">リスク有</span>';
+
+        const lpd = (d.lastPlayDays !== null && d.lastPlayDays !== undefined) ? d.lastPlayDays : null;
+        const lpText = lpd !== null
+            ? (st === 'churn'
+                ? `<span class="text-red-400 font-bold">${lpd}日前</span>`
+                : st === 'risk'
+                    ? `<span class="text-yellow-400 font-bold">${lpd}日前</span>`
+                    : `<span class="text-slate-300">${lpd}日前</span>`)
+            : '<span class="text-slate-600">-</span>';
 
         const pCount=d.purchaseCount>0?`<span class="text-amber-400 font-bold">${d.purchaseCount}回</span>`:'<span class="text-slate-600">-</span>';
 
@@ -1276,6 +1366,7 @@ function renderTable() {
                 <td class="px-5 py-2.5 font-bold text-emerald-400">${ltv} ${segB}</td>
                 <td class="px-5 py-2.5 font-bold ${sc}">${d.STATUS||'-'}</td>
                 <td class="px-5 py-2.5 text-slate-400">${d.days>=0?d.days+'日':'-'}</td>
+                <td class="px-5 py-2.5">${lpText}</td>
                 <td class="px-5 py-2.5">${pCount}</td>
             </tr>`);
     });
@@ -1303,12 +1394,13 @@ function exportCSV() {
     });
     const rows=sorted.map(d=>{
         const seg=d.ltv>=10000?'クジラ':d.ltv>=1000?'イルカ':d.ltv>0?'小魚':'-';
-        let risk='-';
-        if(d.lvNum<=10&&d.days>=20)risk='離脱状態';
-        else if(d.lvNum<=10&&d.days>=10)risk='リスク有';
-        return [d.NAME||'',d.lvNum,d.ltv,seg,d.STATUS||'',d.days>=0?d.days:'',d.purchaseCount||0,risk].join(',');
+        const st = getChurnStatus(d);
+        const risk = st === 'churn' ? '離脱状態' : st === 'risk' ? 'リスク有' : '-';
+        const lpd = (d.lastPlayDays !== null && d.lastPlayDays !== undefined) ? d.lastPlayDays : null;
+        const lpStr = lpd !== null ? lpd+'日前' : '-';
+        return [d.NAME||'',d.lvNum,d.ltv,seg,d.STATUS||'',d.days>=0?d.days:'',lpStr,d.purchaseCount||0,risk].join(',');
     });
-    const csv='\uFEFF'+['NAME,LEVEL,累計課金額,セグメント,STATUS,経過日数,課金回数,リスク',...rows].join('\n');
+    const csv='\uFEFF'+['NAME,LEVEL,累計課金額,セグメント,STATUS,登録経過日数,最終プレイ,課金回数,リスク',...rows].join('\n');
     const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),download:`users_${today.format('YYYYMMDD')}.csv`});
     a.click();
 }
@@ -1322,6 +1414,7 @@ const GAS_AUTO_KEY = 'gas_dashboard_auto';
 // ローカルで読み込み済みのCSV生テキストを保持
 let localUserCsv  = null;
 let localSalesCsv = null;
+let localBoothCsv = null;   // 全台分をヘッダー1行＋データ行でマージしたCSV文字列
 
 // パネル開閉
 function toggleSyncPanel() {
@@ -1345,11 +1438,15 @@ function setAutoToggle(on) {
 
 // ステップ表示更新
 function updateFlowSteps() {
-    const hasLocal = localUserCsv || localSalesCsv;
+    const hasLocal = localUserCsv || localSalesCsv || localBoothCsv;
     const s1 = document.getElementById('stepStatus1');
     const s2 = document.getElementById('stepStatus2');
     if (s1) {
-        s1.innerText  = hasLocal ? '✅ 読み込み済み' : '⏳ 未読み込み';
+        const parts = [];
+        if (localUserCsv)  parts.push('ユーザー');
+        if (localSalesCsv) parts.push('売上');
+        if (localBoothCsv) parts.push('ブース');
+        s1.innerText  = hasLocal ? `✅ 読み込み済み (${parts.join('・')})` : '⏳ 未読み込み';
         s1.className  = 'mt-1 text-xs font-bold ' + (hasLocal ? 'text-emerald-400' : 'text-slate-500');
     }
     // ② はアップロード後に updateFlowSteps('uploaded') で更新
@@ -1394,7 +1491,7 @@ async function uploadToDrive() {
     const url = getGasUrl();
     if (!url) return;
 
-    if (!localUserCsv && !localSalesCsv) {
+    if (!localUserCsv && !localSalesCsv && !localBoothCsv) {
         setSyncStatus('error', '⚠️ 先にローカルCSVを読み込んでください（画面右上のファイル選択）。');
         return;
     }
@@ -1405,6 +1502,7 @@ async function uploadToDrive() {
         const body = { type: 'both' };
         if (localUserCsv)  body.user  = localUserCsv;
         if (localSalesCsv) body.sales = localSalesCsv;
+        if (localBoothCsv) body.booth = localBoothCsv;
 
         const res  = await fetch(url, {
             method:  'POST',
@@ -1418,7 +1516,8 @@ async function uploadToDrive() {
 
         const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
         document.getElementById('syncLastFetched').innerText = `最終保存: ${now}`;
-        setSyncStatus('ok', `☁️ Driveへの保存完了 — ${now}<br><span style="font-weight:400;opacity:0.8">他のPCで「Driveから取得」を押すと同じデータが読み込まれます。</span>`);
+        const saved = [localUserCsv&&'ユーザー', localSalesCsv&&'売上', localBoothCsv&&'ブースログ'].filter(Boolean).join('・');
+        setSyncStatus('ok', `☁️ Driveへの保存完了（${saved}）— ${now}<br><span style="font-weight:400;opacity:0.8">他のPCで「Driveから取得」を押すと同じデータが読み込まれます。</span>`);
 
         // ステップ②を更新
         const s2 = document.getElementById('stepStatus2');
@@ -1446,7 +1545,7 @@ async function syncFromDrive() {
         const json = await res.json();
         if (!json.ok) throw new Error(json.error || '不明なエラー');
 
-        const { user, sales } = json.data;
+        const { user, sales, booth } = json.data;
         let loaded = [];
 
         if (user) {
@@ -1461,15 +1560,29 @@ async function syncFromDrive() {
             processSalesData(parsed.data);
             loaded.push('売上');
         }
+        if (booth) {
+            localBoothCsv = booth;
+            lastPlayMap = {};
+            const parsed = Papa.parse(booth.trim(), { header: true, skipEmptyLines: true });
+            processMachineLog(parsed.data);
+            const cnt = Object.keys(lastPlayMap).length;
+            document.getElementById('boothStatus').classList.remove('hidden');
+            document.getElementById('boothStatus').textContent = `✓ Drive同期済み (${cnt}名突合)`;
+            loaded.push('ブースログ');
+            applyMachineLogToAllData();
+        }
 
-        if (!user && !sales) {
+        if (!user && !sales && !booth) {
             setSyncStatus('error', '⚠️ Drive にまだデータがありません。先に「Driveに保存」を実行してください。');
             return;
         }
 
+        // ブースログ反映後に再フィルタ
+        if (allData.length > 0) applyFilters();
+
         const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
         document.getElementById('syncLastFetched').innerText = `最終取得: ${now}`;
-        setSyncStatus('ok', `✅ 同期完了（${loaded.join('・')}CSV）— ${now}`);
+        setSyncStatus('ok', `✅ 同期完了（${loaded.join('・')}）— ${now}`);
         updateFlowSteps();
 
     } catch (err) {
@@ -1517,6 +1630,60 @@ document.getElementById('salesFile').addEventListener('change', e => {
     };
     reader.readAsText(file, 'UTF-8');
     Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => processSalesData(r.data) });
+});
+
+document.getElementById('boothFiles').addEventListener('change', e => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    const statusEl = document.getElementById('boothStatus');
+    statusEl.classList.remove('hidden');
+    statusEl.textContent = '読み込み中…';
+    lastPlayMap = {};  // リセット
+
+    // 全台分のテキストを収集してマージCSVを作る
+    const rawTexts = new Array(files.length).fill(null);
+    let pending = files.length;
+
+    files.forEach((file, idx) => {
+        // ① CSVテキストを保持（マージ用）
+        const reader = new FileReader();
+        reader.onload = ev => {
+            rawTexts[idx] = ev.target.result;
+        };
+        reader.readAsText(file, 'UTF-8');
+
+        // ② 解析して lastPlayMap を構築
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: r => {
+                processMachineLog(r.data);
+                pending--;
+                if (pending === 0) {
+                    // 全台読込完了：テキストをヘッダー1行＋データ行でマージ
+                    // (各ファイルの1行目をヘッダーとみなし、先頭ファイルのみ採用)
+                    const lines = [];
+                    let headerSet = false;
+                    rawTexts.forEach(txt => {
+                        if (!txt) return;
+                        const ls = txt.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+                        if (!headerSet) {
+                            lines.push(ls[0]);   // ヘッダー行は最初の1回だけ
+                            headerSet = true;
+                        }
+                        ls.slice(1).forEach(l => { if (l.trim()) lines.push(l); });
+                    });
+                    localBoothCsv = lines.join('\n');
+
+                    const cnt = Object.keys(lastPlayMap).length;
+                    statusEl.textContent = `✓ ${files.length}台読込完了 (${cnt}名突合)`;
+                    applyMachineLogToAllData();
+                    if (allData.length > 0) applyFilters();
+                    updateFlowSteps();
+                }
+            }
+        });
+    });
 });
 
 // =============================================
