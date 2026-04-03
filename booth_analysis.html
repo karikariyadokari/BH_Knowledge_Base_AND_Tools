@@ -416,7 +416,7 @@ let autoSyncTimer = null; // Drive自動同期の遅延タイマー
 function esc(s) {
     return String(s == null ? '' : s)
         .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
-        .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 function mkChart(id, type, data, opts) {
     if (charts[id]) { charts[id].destroy(); }
@@ -513,6 +513,7 @@ function splitLine(line) {
 }
 
 function parseCSV(text, batchRoom) {
+    text = text.replace(/^\uFEFF/, '');
     const lines = text.split(/\r?\n/);
     if (lines.length < 2) return;
     const hdrs = splitLine(lines[0]);
@@ -588,7 +589,7 @@ function clearDateFilter() {
 // ============================================================
 // メイン描画
 // ============================================================
-function renderAll(fs='', fe='', ftag='') {
+function renderAll(fs, fe, ftag) {
     if (!Object.keys(db).length) { renderEmpty(); return; }
 
     const s   = fs   || document.getElementById('startDate').value;
@@ -718,7 +719,9 @@ function setRevTab(mode, btn) {
     btn.classList.add('active');
     // dailyPlays を再構築して再描画
     const dp = {}, sd = document.getElementById('startDate').value, ed = document.getElementById('endDate').value;
+    const tag = document.getElementById('tagFilter').value;
     for (const mac of Object.keys(db)) {
+        if (tag && db[mac].tag !== tag) continue;
         for (const d of Object.keys(db[mac].logs)) {
             if (sd && d<sd) continue; if (ed && d>ed) continue;
             const lg = db[mac].logs[d];
@@ -1081,11 +1084,14 @@ function renderFeeTemplateChips() {
     if (!names.length) { area.classList.add('hidden'); return; }
     area.classList.remove('hidden');
     chips.innerHTML = names.map(name =>
-        `<button onclick="applyTemplate('${esc(name)}')"
+        `<button data-name="${esc(name)}"
             class="bg-amber-900/40 hover:bg-amber-800/60 border border-amber-700/60 text-amber-300 text-xs font-bold py-1 px-3 rounded-full transition-all">
             📋 ${esc(name)}
         </button>`
     ).join('');
+    chips.querySelectorAll('button[data-name]').forEach(btn => {
+        btn.onclick = () => applyTemplate(btn.dataset.name);
+    });
 }
 
 function renderTemplateList() {
@@ -1095,7 +1101,7 @@ function renderTemplateList() {
         el.innerHTML = '<p class="text-slate-500 text-xs italic">まだテンプレートがありません</p>';
         return;
     }
-    el.innerHTML = names.map(name => {
+    el.innerHTML = names.map((name, i) => {
         const tmpl = feeTemplates[name];
         const overrideCount = Object.keys(tmpl.settings||{}).length;
         const overrideSummary = overrideCount > 0
@@ -1108,20 +1114,20 @@ function renderTemplateList() {
                     <p class="text-xs text-slate-400 mt-0.5">デフォルト: <span class="text-amber-300 font-bold">${tmpl.defaultFee ?? 100} コイン</span> / ${overrideSummary}</p>
                 </div>
                 <div class="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
-                    <button onclick="applyTemplate('${esc(name)}')"
+                    <button data-action="apply" data-idx="${i}"
                         class="bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-bold py-1 px-3 rounded">適用</button>
-                    <button onclick="editTemplate('${esc(name)}')"
+                    <button data-action="edit" data-idx="${i}"
                         class="bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold py-1 px-3 rounded">編集</button>
-                    <button onclick="deleteTemplate('${esc(name)}')"
+                    <button data-action="delete" data-idx="${i}"
                         class="bg-red-900/50 hover:bg-red-900 text-red-300 text-xs font-bold py-1 px-2 rounded border border-red-800/50">削除</button>
                 </div>
             </div>
-            <div id="tmplEdit_${esc(name).replace(/[^a-zA-Z0-9]/g,'_')}" class="hidden mt-3 space-y-2">
+            <div id="tmplEdit_${i}" class="hidden mt-3 space-y-2">
                 <div class="flex gap-2 items-center">
                     <span class="text-xs text-slate-400 w-28 flex-shrink-0">デフォルト料金</span>
                     <input type="number" min="0" value="${tmpl.defaultFee ?? 100}"
                         class="w-24 bg-slate-700 border border-slate-600 text-amber-300 text-sm font-bold rounded px-2 py-1 outline-none focus:border-amber-400"
-                        oninput="feeTemplates['${esc(name)}'].defaultFee=parseInt(this.value)||0; saveTemplatesLocal()">
+                        data-idx="${i}" data-field="defaultFee">
                     <span class="text-slate-500 text-xs">コイン</span>
                 </div>
                 ${Object.keys(db).map(mac => {
@@ -1130,13 +1136,31 @@ function renderTemplateList() {
                         <span class="text-slate-300 text-xs flex-1 truncate">${esc(db[mac].name||mac)}</span>
                         <input type="number" min="0" value="${v}" placeholder="${tmpl.defaultFee ?? 100}"
                             class="w-24 bg-slate-700 border border-slate-600 text-amber-300 text-xs font-bold rounded px-2 py-1 outline-none focus:border-amber-400"
-                            oninput="updateTemplateBoothFee('${esc(name)}','${esc(mac)}',this.value)">
+                            data-idx="${i}" data-mac="${esc(mac)}" data-field="boothFee">
                         <span class="text-slate-500 text-xs">コイン</span>
                     </div>`;
                 }).join('')}
             </div>
         </div>`;
     }).join('');
+
+    // イベントハンドラを DOM 生成後に登録（テンプレート名の特殊文字を安全に扱うため）
+    el.querySelectorAll('[data-action]').forEach(btn => {
+        const name = names[parseInt(btn.dataset.idx)];
+        btn.onclick = () => {
+            if (btn.dataset.action === 'apply')  applyTemplate(name);
+            else if (btn.dataset.action === 'edit')   editTemplate(parseInt(btn.dataset.idx));
+            else if (btn.dataset.action === 'delete') deleteTemplate(name);
+        };
+    });
+    el.querySelectorAll('input[data-field="defaultFee"]').forEach(input => {
+        const name = names[parseInt(input.dataset.idx)];
+        input.oninput = () => { feeTemplates[name].defaultFee = parseInt(input.value)||0; saveTemplatesLocal(); };
+    });
+    el.querySelectorAll('input[data-field="boothFee"]').forEach(input => {
+        const name = names[parseInt(input.dataset.idx)];
+        input.oninput = () => updateTemplateBoothFee(name, input.dataset.mac, input.value);
+    });
 }
 
 function updateTemplateBoothFee(name, mac, val) {
@@ -1181,9 +1205,8 @@ function applyTemplate(name) {
     alert(`テンプレート「${name}」を適用しました。\n「適用して更新」ボタンで売上を再計算してください。`);
 }
 
-function editTemplate(name) {
-    const sid = esc(name).replace(/[^a-zA-Z0-9]/g,'_');
-    const el = document.getElementById('tmplEdit_' + sid);
+function editTemplate(idx) {
+    const el = document.getElementById('tmplEdit_' + idx);
     if (el) el.classList.toggle('hidden');
 }
 
@@ -1232,7 +1255,7 @@ function exportCSV() {
         const plays=w+l,acq=w+a;
         rows.push([m.name,m.tag||'',mac,plays,w,a,l,drop,acq>0?(plays/acq).toFixed(2)+' 手':'-',plays*getFee(mac),e1,e2,e3,e4]);
     }
-    const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const csv=rows.map(r=>r.map(v=>{const s=String(v);return `"${(/^[=+\-@]/.test(s)?'\''+s:s).replace(/"/g,'""')}"`;}).join(',')).join('\n');
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
     a.download=`BoothAnalysis_${new Date().toISOString().slice(0,10)}.csv`;
@@ -1240,21 +1263,21 @@ function exportCSV() {
 }
 function exportJSON() {
     const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([JSON.stringify({db,feeSettings})],{type:'application/json'}));
+    a.href=URL.createObjectURL(new Blob([JSON.stringify({db,feeSettings,feeTemplates})],{type:'application/json'}));
     a.download=`BoothBackup_${new Date().toISOString().slice(0,10)}.json`;
     a.click();
 }
 function importJSON(input) {
     const r=new FileReader();
     r.onload=ev=>{
-        try{const d=JSON.parse(ev.target.result);if(d.db)db=d.db;if(d.feeSettings)feeSettings=d.feeSettings;persistAndRender(false);}
+        try{const d=JSON.parse(ev.target.result);if(d.db)db=d.db;if(d.feeSettings)feeSettings=d.feeSettings;if(d.feeTemplates)feeTemplates=d.feeTemplates;persistAndRender(false);}
         catch(e){alert('JSONの読み込みに失敗しました: '+e.message);}
     };
     r.readAsText(input.files[0]);
 }
 function clearData() {
     if(!confirm('全データを消去しますか？'))return;
-    db={};feeSettings={};openBooths.clear();lastStats={};
+    db={};feeSettings={};feeTemplates={};openBooths.clear();lastStats={};
     try{localStorage.removeItem(DB_KEY);}catch(_){}
     renderEmpty();
 }
@@ -1296,10 +1319,10 @@ function setSyncStatus(type,msg) {
         type==='loading'?'bg-amber-900/40 border border-amber-700 text-amber-300':
         type==='ok'     ?'bg-emerald-900/40 border border-emerald-700 text-emerald-300':
                          'bg-red-900/40 border border-red-700 text-red-300');
-    el.innerHTML=msg; el.classList.remove('hidden');
+    el.textContent=msg; el.classList.remove('hidden');
     dot.className='sync-dot '+(type==='loading'?'loading':type==='ok'?'ok':'error');
 }
-async function uploadToDrive(isAuto=false) {
+async function uploadToDrive(isAuto=false, _retryCount=0) {
     const url=localStorage.getItem(GAS_URL_KEY)||'';
     if(!url){if(!isAuto)setSyncStatus('error','GAS URLが設定されていません。');return;}
     if(!isAuto)setSyncStatus('loading','⏳ Driveにアップロード中...');
@@ -1312,6 +1335,10 @@ async function uploadToDrive(isAuto=false) {
 
         if(json.status==='conflict'){
             // 競合: サーバー側が別の端末に更新されていた
+            if(_retryCount >= 2){
+                setSyncStatus('error','⚠️ 競合が繰り返されています。手動で確認してください。');
+                return;
+            }
             if(confirm(
                 '⚠️ 競合が発生しました。\n\n' +
                 '別の端末がこの後にデータを更新しています。\n' +
@@ -1327,7 +1354,7 @@ async function uploadToDrive(isAuto=false) {
                 }
                 serverVersion=json.serverVersion;
                 persistAndRender(false);
-                await uploadToDrive(isAuto);
+                await uploadToDrive(isAuto, _retryCount + 1);
             } else {
                 setSyncStatus('error','⚠️ 保存をキャンセルしました。「Driveから取得」で最新データを確認してください。');
             }

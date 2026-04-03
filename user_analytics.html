@@ -665,6 +665,10 @@
 // =============================================
 // ユーティリティ
 // =============================================
+function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 function normalizeName(name) {
     return (name || '').normalize('NFKC')
         .replace(/[\s\u3000]+/g,'').replace(/[\u200B-\u200D\uFEFF]/g,'')
@@ -705,6 +709,7 @@ const gc = '#1e293b'; // grid color
 let allData          = [];
 let salesMap         = {};    // { normName: totalJPY }
 let salesCountMap    = {};    // { normName: purchaseCount }
+let salesDisplayMap  = {};    // { normName: 元の表示名 }
 let salesRawData     = [];    // { user, sales, method, pack, paidOn }
 let firstPurchaseMap = {};    // { normName: dayjs earliest }
 let currentTableData = [];
@@ -722,12 +727,12 @@ const charts = {};
 // 売上データ処理
 // =============================================
 function processSalesData(rawData) {
-    salesMap = {}; salesCountMap = {}; salesRawData = {}; firstPurchaseMap = {};
-    salesRawData = [];
+    salesMap = {}; salesCountMap = {}; salesDisplayMap = {}; salesRawData = []; firstPurchaseMap = {};
     let totalRevenue = 0;
 
     rawData.forEach(row => {
-        const user     = normalizeName(String(row.USER||'').trim());
+        const rawUser  = String(row.USER||'').trim();
+        const user     = normalizeName(rawUser);
         const sales    = parseInt(row.SALES)||0;
         const currency = (row.CURRENCY||'').trim().toUpperCase();
         // CURRENCY が JPY または空（Apple Pay / Google Pay 等）の行を集計対象とする
@@ -735,6 +740,7 @@ function processSalesData(rawData) {
 
         salesMap[user]      = (salesMap[user]||0) + sales;
         salesCountMap[user] = (salesCountMap[user]||0) + 1;
+        if (!salesDisplayMap[user]) salesDisplayMap[user] = rawUser;
         totalRevenue += sales;
 
         const paidOn = row['PAID ON'] ? dayjs(row['PAID ON']) : null;
@@ -966,10 +972,10 @@ function checkAlerts() {
     const purEl    = document.getElementById('kpi-pur');
     const repRateEl= document.getElementById('kpi-repeat-rate');
 
-    const riskVal   = parseInt(riskEl.innerText)||0;
-    const churnVal  = parseInt(churnEl.innerText)||0;
-    const purVal    = parseFloat(purEl.innerText)||0;
-    const repVal    = parseFloat(repRateEl.innerText)||0;
+    const riskVal   = parseInt((riskEl.innerText||'').replace(/[^\d]/g,''))||0;
+    const churnVal  = parseInt((churnEl.innerText||'').replace(/[^\d]/g,''))||0;
+    const purVal    = parseFloat((purEl.innerText||'').replace(/[^\d.]/g,''))||0;
+    const repVal    = parseFloat((repRateEl.innerText||'').replace(/[^\d.]/g,''))||0;
 
     const aRisk   = parseInt(document.getElementById('alertRisk').value)||0;
     const aChurn  = parseInt(document.getElementById('alertChurn').value)||0;
@@ -984,7 +990,7 @@ function checkAlerts() {
     alerts.forEach(a => {
         const div = document.createElement('div');
         div.className = `alert-banner alert-${a.type}`;
-        div.innerHTML = a.msg;
+        div.textContent = a.msg;
         area.appendChild(div);
     });
 }
@@ -1111,7 +1117,7 @@ function renderMethodChart() {
     );
     document.getElementById('methodLegend').innerHTML=labels.map((l,i)=>`
         <div class="flex justify-between items-center py-0.5 text-xs">
-            <div class="flex items-center gap-1.5"><span style="background:${MC[i]}" class="w-2 h-2 rounded-full flex-shrink-0"></span><span class="text-slate-300 truncate" style="max-width:120px">${l}</span></div>
+            <div class="flex items-center gap-1.5"><span style="background:${MC[i]}" class="w-2 h-2 rounded-full flex-shrink-0"></span><span class="text-slate-300 truncate" style="max-width:120px">${esc(l)}</span></div>
             <span class="text-white font-bold">¥${values[i].toLocaleString()}</span>
         </div>`).join('');
 }
@@ -1124,7 +1130,7 @@ function renderTopPayersChart() {
     if (!Object.keys(salesMap).length){empty.classList.remove('hidden');return;} empty.classList.add('hidden');
     const sorted=Object.entries(salesMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
     mkChart('topPayersChart','bar',
-        {labels:sorted.map(x=>x[0]),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:'rgba(251,191,36,0.7)',borderColor:'#fbbf24',borderWidth:1,borderRadius:3}]},
+        {labels:sorted.map(x=>salesDisplayMap[x[0]]||x[0]),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:'rgba(251,191,36,0.7)',borderColor:'#fbbf24',borderWidth:1,borderRadius:3}]},
         {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'¥'+c.parsed.x.toLocaleString()}}},
          scales:{x:{grid:{color:gc},ticks:{color:tc,callback:v=>'¥'+v.toLocaleString()}},y:{grid:{display:false},ticks:{color:'#e2e8f0',font:{size:11}}}}}
     );
@@ -1321,7 +1327,7 @@ function renderStatusChart() {
     const kpiArea=document.getElementById('statusKpiArea');
     kpiArea.innerHTML=labels.map(l=>`
         <div class="bg-slate-800/60 rounded-lg p-2 text-center">
-            <p class="text-xs font-bold" style="color:${sColors[l]||'#94a3b8'}">${l}</p>
+            <p class="text-xs font-bold" style="color:${sColors[l]||'#94a3b8'}">${esc(l)}</p>
             <p class="text-xl font-bold text-white mt-0.5">${sc[l].toLocaleString()}名</p>
             <p class="text-xs text-slate-500">${((sc[l]/total)*100).toFixed(1)}%</p>
         </div>`).join('');
@@ -1422,10 +1428,10 @@ function renderTable() {
 
         body.insertAdjacentHTML('beforeend',`
             <tr class="hover:bg-slate-700/40 transition-colors">
-                <td class="px-5 py-2.5 font-medium">${d.NAME||'-'} ${rkB}</td>
+                <td class="px-5 py-2.5 font-medium">${esc(d.NAME)||'-'} ${rkB}</td>
                 <td class="px-5 py-2.5 font-bold text-sky-400">Lv.${d.lvNum}</td>
                 <td class="px-5 py-2.5 font-bold text-emerald-400">${ltv} ${segB}</td>
-                <td class="px-5 py-2.5 font-bold ${sc}">${d.STATUS||'-'}</td>
+                <td class="px-5 py-2.5 font-bold ${sc}">${esc(d.STATUS)||'-'}</td>
                 <td class="px-5 py-2.5 text-slate-400">${d.days>=0?d.days+'日':'-'}</td>
                 <td class="px-5 py-2.5">${lpText}</td>
                 <td class="px-5 py-2.5">${pCount}</td>
@@ -1459,9 +1465,10 @@ function exportCSV() {
         const risk = st === 'churn' ? '離脱状態' : st === 'risk' ? 'リスク有' : '-';
         const lpd = (d.lastPlayDays !== null && d.lastPlayDays !== undefined) ? d.lastPlayDays : null;
         const lpStr = lpd !== null ? lpd+'日前' : '-';
-        return [d.NAME||'',d.lvNum,d.ltv,seg,d.STATUS||'',d.days>=0?d.days:'',lpStr,d.purchaseCount||0,risk].join(',');
+        const raw=[d.NAME||'',d.lvNum,d.ltv,seg,d.STATUS||'',d.days>=0?d.days:'',lpStr,d.purchaseCount||0,risk];
+        return raw.map(v=>{const s=String(v);return `"${(/^[=+\-@]/.test(s)?'\''+s:s).replace(/"/g,'""')}"`;}).join(',');
     });
-    const csv='\uFEFF'+['NAME,LEVEL,累計課金額,セグメント,STATUS,登録経過日数,最終プレイ,課金回数,リスク',...rows].join('\n');
+    const csv='\uFEFF'+['"NAME","LEVEL","累計課金額","セグメント","STATUS","登録経過日数","最終プレイ","課金回数","リスク"',...rows].join('\n');
     const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),download:`users_${today.format('YYYYMMDD')}.csv`});
     a.click();
 }
@@ -1584,7 +1591,7 @@ async function uploadToDrive() {
         if (s3) { s3.innerText = '✅ 同期可能'; s3.className = 'mt-1 text-xs font-bold text-sky-400'; }
 
     } catch (err) {
-        setSyncStatus('error', `❌ アップロード失敗: ${err.message}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定をご確認ください。</span>`);
+        setSyncStatus('error', `❌ アップロード失敗: ${esc(err.message)}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定をご確認ください。</span>`);
     }
 }
 
@@ -1660,7 +1667,7 @@ async function syncFromDrive() {
         updateFlowSteps();
 
     } catch (err) {
-        setSyncStatus('error', `❌ 取得失敗: ${err.message}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定・ファイル存在をご確認ください。</span>`);
+        setSyncStatus('error', `❌ 取得失敗: ${esc(err.message)}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定・ファイル存在をご確認ください。</span>`);
     }
 }
 
@@ -1836,10 +1843,10 @@ document.getElementById('csvFile').addEventListener('change', e => {
     reader.onload = ev => {
         localUserCsv = ev.target.result;
         updateFlowSteps();
+        const parsed = Papa.parse(localUserCsv.trim(), { header: true, skipEmptyLines: true });
+        processData(parsed.data);
     };
     reader.readAsText(file, 'UTF-8');
-    // 既存処理も実行
-    Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => processData(r.data) });
 });
 
 document.getElementById('salesFile').addEventListener('change', e => {
@@ -1848,9 +1855,10 @@ document.getElementById('salesFile').addEventListener('change', e => {
     reader.onload = ev => {
         localSalesCsv = ev.target.result;
         updateFlowSteps();
+        const parsed = Papa.parse(localSalesCsv.trim(), { header: true, skipEmptyLines: true });
+        processSalesData(parsed.data);
     };
     reader.readAsText(file, 'UTF-8');
-    Papa.parse(file, { header: true, skipEmptyLines: true, complete: r => processSalesData(r.data) });
 });
 
 document.getElementById('boothFiles').addEventListener('change', async e => {
