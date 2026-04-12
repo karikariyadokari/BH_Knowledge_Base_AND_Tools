@@ -1372,6 +1372,7 @@ async function syncFromDrive() {
     const url=getGasUrl();if(!url)return;
     setSyncStatus('loading','⏳ Driveからデータを取得中...');
     try{
+        // ── STEP 1: bh_booth_data.json を取得（集計済みdb + メタ情報）
         const res=await fetch(url,{redirect:'follow'});
         if(!res.ok)throw new Error('HTTP '+res.status);
         const text=await res.text();
@@ -1382,71 +1383,87 @@ async function syncFromDrive() {
         if(json.error)throw new Error(json.error);
 
         const remoteVersion = json.version !== undefined ? json.version : 0;
-        let loaded = {};
 
-        // ── 優先1: 集計済みdb（booth_analysis.html の uploadToDrive が書いたもの）
-        let fromRawLogs = false;
-        if(json.db && typeof json.db==='object' && Object.keys(json.db).length){
+        // 料金設定・テンプレートを反映
+        if(json.feeSettings  && typeof json.feeSettings==='object')  feeSettings=json.feeSettings;
+        if(json.feeTemplates && typeof json.feeTemplates==='object') feeTemplates=json.feeTemplates;
+        if(json.defaultFee!=null){const el=document.getElementById('defaultFee');if(el)el.value=json.defaultFee;}
+
+        // 集計済みdb を base として読み込む（存在すれば）
+        let baseDb = {};
+        if(json.db && typeof json.db==='object'){
             for(const mac of Object.keys(json.db)){
                 const m=json.db[mac];
                 if(!m||typeof m!=='object')continue;
-                loaded[mac]={name:m.name||mac,tag:m.tag||'',logs:m.logs||{},hourly:m.hourly||{}};
-            }
-            if(json.feeSettings  && typeof json.feeSettings==='object')  feeSettings=json.feeSettings;
-            if(json.feeTemplates && typeof json.feeTemplates==='object') feeTemplates=json.feeTemplates;
-            if(json.defaultFee!=null){const el=document.getElementById('defaultFee');if(el)el.value=json.defaultFee;}
-        }
-        // ── 優先2: rawログ（?booth=all で全ブース結合取得）
-        else if(json.status==='ok' && Array.isArray(json.logs) && json.logs.length){
-            loaded = buildDbFromJson(json.items||[], json.logs);
-            fromRawLogs = true;
-        }
-        // ── ログなし → ?booth=all を試みる
-        else {
-            setSyncStatus('loading','⏳ ブース別ログを取得中...');
-            const allUrl = url + (url.includes('?') ? '&' : '?') + 'booth=all';
-            const allRes = await fetch(allUrl, {redirect:'follow'});
-            if(!allRes.ok) throw new Error('HTTP '+allRes.status);
-            const allJson = await allRes.json();
-            if(Array.isArray(allJson.logs) && allJson.logs.length){
-                loaded = buildDbFromJson(allJson.items||json.items||[], allJson.logs);
-                fromRawLogs = true;
-            } else {
-                const hint = Array.isArray(json.items) && json.items.length
-                    ? '機体マスターのみ存在します。自動取得をONにするか bookmarklet_logs.js を実行してください。'
-                    : 'Driveにまだデータがありません。';
-                setSyncStatus('error','⚠️ '+hint);
-                return;
+                baseDb[mac]={name:m.name||mac,tag:m.tag||'',logs:m.logs||{},hourly:m.hourly||{}};
             }
         }
 
-        if(!Object.keys(loaded).length){setSyncStatus('error','⚠️ 有効なブースデータがありません。');return;}
-
-        const countPlays = d => Object.values(d).reduce((s,m)=>s+Object.values(m.logs||{}).reduce((t,lg)=>t+(lg.w||0)+(lg.l||0),0),0);
-
-        if(fromRawLogs){
-            // rawログ由来: Driveのログ件数をコンソール出力（デバッグ用）
-            const loadedPlays = countPlays(loaded);
-            const currentPlays = countPlays(db);
-            console.log(`[BH syncFromDrive] Drive rawログ由来プレイ数: ${loadedPlays}, 現在のdb: ${currentPlays}`);
-
-            if(Object.keys(db).length && loadedPlays < currentPlays){
-                // DriveのデータがローカルDBより少ない → マージして大きい方を残す
-                db = clientSideMerge(loaded, db);
-                console.log(`[BH syncFromDrive] マージ後プレイ数: ${countPlays(db)}`);
-            } else {
-                db = Object.keys(db).length ? clientSideMerge(loaded, db) : loaded;
+        // ── STEP 2: ?booth=all で個別ブースrawログを取得し集計
+        // baseDbに既存データがあれば最終日の2日前以降のみ取得してメモリ節約
+        let fromTs = 0;
+        if(Object.keys(baseDb).length){
+            const allDates = Object.values(baseDb).flatMap(m=>Object.keys(m.logs||{})).sort();
+            if(allDates.length){
+                const d = new Date(allDates[allDates.length-1]);
+                d.setDate(d.getDate()-2); // 2日分オーバーラップで取りこぼし防止
+                fromTs = Math.floor(d.getTime()/1000);
             }
-        } else {
-            // 集計済みdb由来: Driveの値が正なので上書き
-            db = loaded;
+        }
+        setSyncStatus('loading','⏳ ブース別ログを取得中...');
+        const allUrl = url + (url.includes('?') ? '&' : '?') + 'booth=all' + (fromTs ? '&from='+fromTs : '');
+        const allRes = await fetch(allUrl, {redirect:'follow'});
+        if(!allRes.ok)throw new Error('booth=all HTTP '+allRes.status);
+        const allJson = await allRes.json();
+
+        let rawDb = {};
+        if(Array.isArray(allJson.logs) && allJson.logs.length){
+            rawDb = buildDbFromJson(allJson.items||json.items||[], allJson.logs);
         }
 
-        serverVersion=remoteVersion; persistAndRender(false);
+        // ── STEP 3: 集計済みdb ＋ rawログdb をマージ（Math.max で各指標を保持）
+        if(!Object.keys(baseDb).length && !Object.keys(rawDb).length){
+            const hint = Array.isArray(json.items) && json.items.length
+                ? '機体マスターのみ存在します。自動取得をONにするか bookmarklet_logs.js を実行してください。'
+                : 'Driveにまだデータがありません。';
+            setSyncStatus('error','⚠️ '+hint);
+            return;
+        }
+
+        // baseDb を土台に rawDb をマージ（rawDb の新ログで baseDb を上書き/補完）
+        const merged = Object.keys(baseDb).length
+            ? clientSideMerge(baseDb, rawDb)
+            : rawDb;
+
+        // items（機体マスター）のbooth_idでMACアドレスのままの名前を自動補完
+        const itemsByMac = {};
+        (allJson.items||json.items||[]).forEach(item => {
+            if(item.mac) itemsByMac[item.mac] = item;
+        });
+        for(const mac of Object.keys(merged)){
+            if(merged[mac].name === mac){
+                // まだMACアドレスのまま → itemsからbooth_idを割り当て
+                const item = itemsByMac[mac];
+                if(item){
+                    if(item.booth_id)    merged[mac].name = item.booth_id;
+                    if(item.group_label) merged[mac].tag  = merged[mac].tag || item.group_label;
+                }
+            }
+        }
+
+        db = merged;
+        serverVersion=remoteVersion;
+        persistAndRender(false);
+
         const now=new Date().toLocaleString('ja-JP');
         document.getElementById('syncLastFetched').textContent='最終取得: '+now;
-        const logInfo = Array.isArray(json.logs)&&json.logs.length ? '、ログ'+json.logs.length.toLocaleString()+'件' : '';
-        setSyncStatus('ok','✅ 同期完了（'+Object.keys(loaded).length+'ブース'+logInfo+', v'+serverVersion+'） — '+now);
+        const logCount = Array.isArray(allJson.logs) ? allJson.logs.length : 0;
+        const logInfo  = logCount ? '、ログ'+logCount.toLocaleString()+'件' : '';
+        setSyncStatus('ok','✅ 同期完了（'+Object.keys(merged).length+'ブース'+logInfo+', v'+serverVersion+'） — '+now);
+
+        // 最新データを Drive の集計済みdb にも反映（次回起動時に正しいベースを使えるよう）
+        scheduleAutoSync();
+
     }catch(err){setSyncStatus('error','❌ 取得失敗: '+err.message);}
 }
 
@@ -1483,7 +1500,9 @@ function buildDbFromJson(items, logs) {
         const hour = jst.getUTCHours();
         if (date < RELEASE_DATE) return;
 
-        if (!newDb[mac])              newDb[mac] = { name:mac, tag:'', logs:{}, hourly:{} };
+        // itemsで未登録のMACはログのBOOTH_ID/GROUP_LABELから名前を補完
+        if (!newDb[mac]) newDb[mac] = { name: r.BOOTH_ID || mac, tag: r.GROUP_LABEL || '', logs:{}, hourly:{} };
+        else if(newDb[mac].name === mac && r.BOOTH_ID) newDb[mac].name = r.BOOTH_ID;
         if (!newDb[mac].logs[date])   newDb[mac].logs[date]   = {w:0,a:0,l:0,e1:0,e2:0,e3:0,e4:0,drop:0,maint:0};
         if (!newDb[mac].hourly[hour]) newDb[mac].hourly[hour] = {w:0,l:0,e:0};
         const log = newDb[mac].logs[date];
@@ -1533,8 +1552,9 @@ function clientSideMerge(serverDb,localDb){
         const lb=localDb[mac];
         if(!result[mac]){result[mac]=JSON.parse(JSON.stringify(lb));continue;}
         const rb=result[mac];
-        if(lb.name)rb.name=lb.name;
-        if(lb.tag!==undefined)rb.tag=lb.tag;
+        // rawDbの名前がMACアドレスそのもの（未解決）なら上書きしない
+        if(lb.name && lb.name !== mac) rb.name=lb.name;
+        if(lb.tag!==undefined && lb.tag) rb.tag=lb.tag;
         rb.logs=rb.logs||{};
         for(const d of Object.keys(lb.logs||{})){
             rb.logs[d]=rb.logs[d]?mergeLogEntry(rb.logs[d],lb.logs[d]):JSON.parse(JSON.stringify(lb.logs[d]));
