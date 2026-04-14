@@ -2172,7 +2172,8 @@ async function doLoad(target) {
     if (!gasUrl) { setLoadStatus('error', '⚠️ GAS URLを入力してください。'); return; }
 
     // ユーザー・課金取得にはトークンが必要
-    if ((target === 'usersales' || target === 'all') && !token) {
+    // target==='all' のときはトークンがなくてもブースログだけ読み込む
+    if (target === 'usersales' && !token) {
         setLoadStatus('error', '⚠️ アクセストークンを入力してください。');
         return;
     }
@@ -2184,7 +2185,7 @@ async function doLoad(target) {
 
     try {
         // ── ユーザー・課金データをAPIから取得 ──────────
-        if (target === 'usersales' || target === 'all') {
+        if ((target === 'usersales' || target === 'all') && token) {
             setLoadStatus('loading', '⏳ ユーザー・課金データをAdmin APIから取得中...');
             setLoadProgress(true, 'GAS経由でAPIに接続中...');
 
