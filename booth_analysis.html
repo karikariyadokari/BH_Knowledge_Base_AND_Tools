@@ -1453,6 +1453,15 @@ async function syncFromDrive() {
 
         db = merged;
         serverVersion=remoteVersion;
+
+        // 同期後、新データに既存 endDate より新しい日付があれば自動拡張
+        const allSyncDates = Object.values(merged).flatMap(m=>Object.keys(m.logs||{})).sort();
+        if (allSyncDates.length) {
+            const newestDate = allSyncDates[allSyncDates.length-1];
+            const edEl = document.getElementById('endDate');
+            if (!edEl.value || newestDate > edEl.value) edEl.value = newestDate;
+        }
+
         persistAndRender(false);
 
         const now=new Date().toLocaleString('ja-JP');
