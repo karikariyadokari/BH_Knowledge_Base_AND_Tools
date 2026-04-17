@@ -707,14 +707,7 @@ async function syncToGAS() {
   if (!url) return;
   setSyncStatus('syncing', '保存中...');
   try {
-    // Read-merge-write to avoid conflicts
-    let remote = null;
-    try {
-      const res = await fetch(url + '?action=read', { redirect: 'follow' });
-      if (res.ok) remote = await res.json();
-    } catch(_) {}
-    if (remote) mergeState(remote);
-    // Write (no-cors: fire and forget)
+    // ローカル状態をそのまま書き込む（マージしない）
     await fetch(url, {
       method: 'POST',
       mode: 'no-cors',
@@ -722,7 +715,6 @@ async function syncToGAS() {
       body: JSON.stringify({ action: 'write', data: state })
     });
     saveLocal();
-    renderAll();
     setSyncStatus('connected', '保存完了 ' + new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}));
   } catch(e) {
     setSyncStatus('error', 'エラー');
