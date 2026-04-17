@@ -73,6 +73,11 @@ tr.data-row:hover td{background:rgba(255,255,255,.025)}
 .badge-self{background:rgba(99,102,241,.2);color:#818cf8}
 .badge-sync{background:rgba(16,185,129,.2);color:#34d399}
 .badge-get{background:rgba(245,158,11,.2);color:#fbbf24}
+.badge-lose{background:rgba(239,68,68,.15);color:#f87171}
+.log-filter-group{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:2px}
+.log-filter-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:600;padding:4px 12px;border-radius:6px;transition:background .15s,color .15s}
+.log-filter-btn:hover{color:var(--text)}
+.log-filter-btn.active{background:var(--primary);color:#fff}
 .actions{display:flex;gap:6px;flex-wrap:wrap}
 .empty{text-align:center;padding:48px 16px;color:var(--text-dim)}
 .empty-icon{font-size:40px;margin-bottom:10px}
@@ -178,6 +183,7 @@ pre{margin:0}
     </div>
     <div class="table-wrap">
       <table><thead><tr>
+        <th style="width:32px"></th>
         <th style="width:48px">順位</th>
         <th>ライバー名</th>
         <th class="hide-sm">内訳</th>
@@ -214,12 +220,20 @@ pre{margin:0}
   <div class="tab-panel" id="tab-log">
     <div class="section-header">
       <span class="section-title">アクティビティログ</span>
-      <button class="btn btn-danger btn-sm" id="btnClearLog">🗑 全データリセット</button>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div class="log-filter-group">
+          <button class="log-filter-btn active" data-filter="all">全件</button>
+          <button class="log-filter-btn" data-filter="win">獲得</button>
+          <button class="log-filter-btn" data-filter="lose">失敗</button>
+        </div>
+        <button class="btn btn-danger btn-sm" id="btnClearLog">🗑 全データリセット</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table><thead><tr>
         <th>日時</th><th>ユーザー</th><th>ライバー</th><th>種別</th>
-        <th style="text-align:right">数値</th><th style="text-align:right">ポイント</th><th style="width:60px"></th>
+        <th>MAC / 遊び方</th><th>開始〜終了</th>
+        <th style="text-align:right">手数</th><th style="text-align:right">ポイント</th><th style="width:60px"></th>
       </tr></thead><tbody id="logBody"></tbody></table>
     </div>
   </div>
@@ -275,6 +289,8 @@ pre{margin:0}
         <table><thead><tr>
           <th>プライズ名</th>
           <th>Room ID</th>
+          <th>MAC / 遊び方</th>
+          <th>開始〜終了</th>
           <th style="text-align:center">状態</th>
           <th style="text-align:center">手数(turn)</th>
           <th style="text-align:center;color:var(--primary)">+ポイント</th>
@@ -344,6 +360,8 @@ pre{margin:0}
           <th style="width:32px"><input type="checkbox" id="checkAll"></th>
           <th>プライズ名</th>
           <th>Room ID</th>
+          <th>MAC / 遊び方</th>
+          <th>開始〜終了</th>
           <th style="text-align:center">状態</th>
           <th style="text-align:center">手数(turn)</th>
           <th style="text-align:center;color:var(--primary)">ポイント</th>
@@ -479,17 +497,11 @@ pre{margin:0}
     <div class="settings-card">
       <h3>🔗 データ同期（GAS）</h3>
       <div class="info-box">
-        複数人で同時操作するには GAS（Google Apps Script）Web App URL を設定してください。<br>
-        GAS は <strong>doGet</strong>（データ読み込み）・<strong>doPost</strong>（データ保存）を実装し、<br>
-        アクセス権を「<strong>全員（匿名含む）</strong>」でデプロイしてください。
-      </div>
-      <div class="form-group">
-        <label>データ同期 GAS URL</label>
-        <input type="text" id="settingsDataGasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        Google Drive（GAS）との同期が有効です。トークンなし端末はページを開くと自動でデータを読み込みます。
       </div>
       <div class="drive-status" id="gasStatusBox">
-        <div class="sync-dot" id="gasStatusDot"></div>
-        <span id="gasStatusText">未設定</span>
+        <div class="sync-dot connected" id="gasStatusDot"></div>
+        <span id="gasStatusText">GAS接続済み</span>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px">
         <button class="btn btn-primary btn-sm" id="btnTestGas">接続テスト</button>
@@ -504,6 +516,29 @@ pre{margin:0}
           有効: Token あり → インポート後に保存 / Token なし → GAS から読込み<br>
           無効: スケジュール時の保存・読込みを行わない
         </div>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <h3>🎮 ブース種別管理（MAC → 遊び方名）</h3>
+      <div class="info-box">
+        MAC（例: A-1, BC-12）に対応する遊び方の名前（たこ焼き台・橋渡しなど）を登録します。<br>
+        登録内容は Google Drive に自動保存され、全端末で共有されます。
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <input type="text" id="newBoothMac" placeholder="例: A-1" style="width:100px;font-family:monospace">
+        <input type="text" id="newBoothName" placeholder="例: たこ焼き台" style="flex:1;min-width:120px">
+        <button class="btn btn-primary btn-sm" onclick="addBoothType()">追加</button>
+      </div>
+      <div class="table-wrap" style="max-height:200px;overflow-y:auto">
+        <table style="font-size:13px">
+          <thead><tr>
+            <th style="width:90px">MAC</th>
+            <th>遊び方名</th>
+            <th style="width:60px"></th>
+          </tr></thead>
+          <tbody id="boothTypeBody"><tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:12px">読込中...</td></tr></tbody>
+        </table>
       </div>
     </div>
 
@@ -531,7 +566,7 @@ pre{margin:0}
 // ============================================================
 const POINTS = { SELF: 5, SYNC: 70, GET: 70 };
 const DEBOUNCE_MS = 3000;
-const POLL_MS = 30000;
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwSG2FMoAjSiR1Eh2FWUV02G26hTRuEGFCef3Mb9f6fgDhUj7YIfKizIci11NfquQQG/exec';
 
 // 集計期間・自動更新スケジュール
 const COLLECTION_START = new Date('2026-04-16T00:00:00+09:00');
@@ -549,9 +584,10 @@ let state = {
 };
 
 let debounceTimer = null;
-let pollTimer = null;
 let editingLiverId = null;
 let apiPlays = [];
+let boothTypes = []; // { id, mac, name } — mac→遊び方名マッピング
+let logFilter = 'all'; // 'all' | 'win' | 'lose'
 
 // ============================================================
 // UTILS
@@ -566,11 +602,42 @@ function fmtTs(iso) {
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// Unix秒・Unix ms・ISO文字列のいずれでも正しく Date に変換する
+function toDate(val) {
+  if (!val && val !== 0) return null;
+  if (typeof val === 'number') {
+    // 10桁以下 → 秒、13桁以上 → ミリ秒
+    const d = new Date(val < 1e10 ? val * 1000 : val);
+    return isNaN(d) ? null : d;
+  }
+  const d = new Date(val);
+  return isNaN(d) ? null : d;
+}
+// val → ISO文字列 または null
+function toISOSafe(val) {
+  const d = toDate(val);
+  return d ? d.toISOString() : null;
+}
+function fmtJST(val) {
+  if (!val && val !== 0) return '—';
+  const d = toDate(val);
+  if (!d) return '—';
+  return d.toLocaleString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+}
+function boothName(mac) {
+  if (!mac || mac === '—') return '';
+  const entry = boothTypes.find(b => b.mac === mac);
+  return entry ? entry.name : '';
+}
 
 // ============================================================
 // SETTINGS
 // ============================================================
-function getDataGasUrl()    { return localStorage.getItem('data_gas_url') || ''; }
+function getDataGasUrl()    { return GAS_URL; }
 function getApiToken()      { return localStorage.getItem('api_token') || ''; }
 function getAutoSaveEnabled() {
   const v = localStorage.getItem('auto_save_enabled');
@@ -578,20 +645,15 @@ function getAutoSaveEnabled() {
 }
 
 function saveSettings() {
-  const dataUrl  = document.getElementById('settingsDataGasUrl').value.trim();
   const autoSave = document.getElementById('settingsAutoSave').checked;
-  localStorage.setItem('data_gas_url',       dataUrl);
-  localStorage.setItem('auto_save_enabled',  String(autoSave));
-  updateGasStatusUI(!!dataUrl);
+  localStorage.setItem('auto_save_enabled', String(autoSave));
   updateAutoImportStatus();
   toast('設定を保存しました', 'success');
-  if (dataUrl) startPoll();
 }
 
 function loadSettingsUI() {
-  document.getElementById('settingsDataGasUrl').value = getDataGasUrl();
   document.getElementById('settingsAutoSave').checked = getAutoSaveEnabled();
-  updateGasStatusUI(!!getDataGasUrl());
+  updateGasStatusUI(true);
 }
 
 function updateGasStatusUI(connected) {
@@ -694,10 +756,110 @@ function scheduleSave() {
   debounceTimer = setTimeout(() => syncToGAS(), DEBOUNCE_MS);
 }
 
-function startPoll() {
-  clearInterval(pollTimer);
-  if (!getDataGasUrl()) return;
-  pollTimer = setInterval(() => syncFromGAS(), POLL_MS);
+
+// ============================================================
+// BOOTH TYPES — mac → 遊び方名 マッピング
+// ============================================================
+// localStorage キャッシュから即時復元（ネットワーク不要）
+function loadBoothTypesFromCache() {
+  const cached = localStorage.getItem('booth_types_cache');
+  if (cached) {
+    try { boothTypes = JSON.parse(cached); renderBoothTypeList(); } catch(_) {}
+  }
+}
+
+async function loadBoothTypesFromGAS() {
+  // まずキャッシュで即時表示
+  loadBoothTypesFromCache();
+
+  try {
+    // タイムスタンプだけ軽量チェック
+    const tsRes = await fetch(GAS_URL + '?action=readBoothsTimestamp', { redirect: 'follow' });
+    if (!tsRes.ok) return;
+    const { lastModified } = await tsRes.json();
+
+    const localTs = localStorage.getItem('booth_types_ts') || '';
+    if (lastModified && localTs === lastModified) {
+      // 更新なし → キャッシュのまま
+      console.log('[BoothTypes] 更新なし。キャッシュを使用。');
+      return;
+    }
+
+    // 更新あり → フルデータ取得
+    const res = await fetch(GAS_URL + '?action=readBooths', { redirect: 'follow' });
+    if (!res.ok) return;
+    const json = await res.json();
+    const items = Array.isArray(json.items) ? json.items : (Array.isArray(json) ? json : null);
+    if (!items) return;
+
+    boothTypes = items;
+    localStorage.setItem('booth_types_cache', JSON.stringify(items));
+    localStorage.setItem('booth_types_ts', lastModified || '');
+    renderBoothTypeList();
+    console.log('[BoothTypes] GASから更新を取得。');
+  } catch(e) {
+    console.warn('[BoothTypes] GAS読込エラー:', e.message);
+  }
+}
+
+async function saveBoothTypesToGAS() {
+  const lastModified = new Date().toISOString();
+  // ローカルキャッシュ更新
+  localStorage.setItem('booth_types_ts', lastModified);
+  localStorage.setItem('booth_types_cache', JSON.stringify(boothTypes));
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'writeBooths', data: { lastModified, items: boothTypes } })
+    });
+  } catch(e) {
+    console.warn('[BoothTypes] GAS保存エラー:', e.message);
+  }
+}
+
+function renderBoothTypeList() {
+  const tbody = document.getElementById('boothTypeBody');
+  if (!tbody) return;
+  if (!boothTypes.length) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:12px">登録なし</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = boothTypes.map(b => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px">${esc(b.mac)}</td>
+      <td>${esc(b.name)}</td>
+      <td style="text-align:center">
+        <button class="btn btn-danger btn-xs" onclick="deleteBoothType('${esc(b.id)}')">削除</button>
+      </td>
+    </tr>`).join('');
+}
+
+function addBoothType() {
+  const macEl  = document.getElementById('newBoothMac');
+  const nameEl = document.getElementById('newBoothName');
+  const mac  = macEl.value.trim();
+  const name = nameEl.value.trim();
+  if (!mac)  { toast('MAC を入力してください', 'error'); return; }
+  if (!name) { toast('遊び方名を入力してください', 'error'); return; }
+  if (!/^[A-Za-z]+-\d+$/.test(mac)) { toast('MAC は "アルファベット-数字" 形式で入力してください（例: A-1）', 'error'); return; }
+  if (boothTypes.find(b => b.mac === mac)) { toast('そのMACはすでに登録されています', 'error'); return; }
+  boothTypes.push({ id: uid(), mac, name });
+  macEl.value = '';
+  nameEl.value = '';
+  renderBoothTypeList();
+  saveBoothTypesToGAS();
+  toast(`${mac} → ${name} を登録しました`, 'success');
+}
+
+function deleteBoothType(id) {
+  const b = boothTypes.find(x => x.id === id);
+  if (!b || !confirm(`「${b.mac} : ${b.name}」を削除しますか？`)) return;
+  boothTypes = boothTypes.filter(x => x.id !== id);
+  renderBoothTypeList();
+  saveBoothTypesToGAS();
+  toast('削除しました', 'success');
 }
 
 // ============================================================
@@ -767,12 +929,53 @@ function renderLivers() {
     <div class="stat-card"><div class="stat-value" style="color:var(--primary)">${total.toLocaleString()}</div><div class="stat-label">総ポイント</div></div>
     <div class="stat-card"><div class="stat-value" style="color:var(--gold)">${esc(sorted[0]?.name||'—')}</div><div class="stat-label">トップライバー</div></div>`;
   if (!sorted.length) {
-    body.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🎭</div>ライバーが登録されていません</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">🎭</div>ライバーが登録されていません</div></td></tr>`;
     return;
   }
   body.innerHTML = sorted.map((l,i) => {
     const rank = i+1, bd = liverBreakdown(l.id);
-    return `<tr class="data-row">
+    const acts = [...state.activities]
+      .filter(a => a.liverId === l.id)
+      .sort((a,b) => {
+        const ka = new Date(a.endPlayTime || a.startPlayTime || a.timestamp).getTime();
+        const kb = new Date(b.endPlayTime || b.startPlayTime || b.timestamp).getTime();
+        return ka - kb;
+      });
+    const actRows = acts.length ? acts.map(a => {
+      const isLose = a.type === 'liver_lose';
+      const user   = state.users.find(u => u.id === a.userId);
+      const badge  = a.type==='sync' ? 'badge-sync' : a.type==='liver_win' ? 'badge-self' : isLose ? 'badge-lose' : 'badge-get';
+      const label  = a.type==='sync' ? 'シンクロ' : a.type==='liver_win' ? '景品獲得' : isLose ? '失敗' : 'アクスタ手数';
+      const pts    = a.type==='liver_win' ? a.count * POINTS.SELF : isLose ? 0 : a.count * 70;
+      const turns  = (a.type==='liver_win' || isLose) ? (a.turn ?? a.count) : a.count;
+      const actor  = (a.type==='liver_win' || isLose)
+        ? `<span style="color:var(--text-dim);font-size:10px">(自身)</span>`
+        : (user ? esc(user.name) : esc(a.userId||''));
+      const macVal  = a.mac && a.mac !== '—' ? a.mac : '';
+      const bName   = boothName(macVal);
+      const macCell = macVal
+        ? `<span style="font-family:monospace;font-size:11px">${esc(macVal)}</span>${bName ? `<div style="font-size:10px;color:var(--text-dim)">${esc(bName)}</div>` : ''}`
+        : '—';
+      const timeCell = (a.startPlayTime || a.endPlayTime)
+        ? `<div style="font-size:10px;white-space:nowrap">${fmtJST(a.startPlayTime)}</div><div style="font-size:10px;color:var(--text-dim);white-space:nowrap">${fmtJST(a.endPlayTime)}</div>`
+        : '—';
+      const detail = (a.type==='liver_win' || isLose)
+        ? (a.prizeName && a.prizeName!=='—' ? `<div style="font-size:11px">${esc(a.prizeName)}</div>` : '')
+        : `<div style="font-size:11px;color:var(--text-dim)">${esc(a.roomId||'')}</div>`;
+      const ptsText = isLose ? '<span style="color:var(--text-dim)">—</span>' : `<span style="color:var(--primary);font-weight:700">+${pts.toLocaleString()}pt</span>`;
+      return `<tr style="border-top:1px solid rgba(255,255,255,.04)${isLose ? ';opacity:.55' : ''}">
+        <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">${a.endPlayTime ? fmtJST(a.endPlayTime) : fmtTs(a.timestamp)}</td>
+        <td><span class="badge ${badge}">${label}</span></td>
+        <td>${actor}${detail}</td>
+        <td>${macCell}</td>
+        <td style="font-size:11px">${timeCell}</td>
+        <td style="text-align:right;font-weight:700">${turns}</td>
+        <td style="text-align:right">${ptsText}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="7" style="color:var(--text-dim);text-align:center;padding:10px">アクティビティなし</td></tr>`;
+
+    return `<tr class="data-row" style="cursor:pointer" onclick="toggleExpandLiver('${l.id}')">
+      <td><button class="expand-btn" id="expbtn_l_${l.id}">▶</button></td>
       <td class="rank ${rankClass(rank)}">${rankMedal(rank)}</td>
       <td class="name-cell">${esc(l.name)}</td>
       <td class="hide-sm breakdown">
@@ -781,13 +984,38 @@ function renderLivers() {
         <span class="badge badge-get">手数×${bd.get}</span>→${bd.getPts.toLocaleString()}pt
       </td>
       <td><div class="pts">${bd.total.toLocaleString()}</div><div class="pts-sm">pt</div></td>
-      <td><div class="actions">
+      <td onclick="event.stopPropagation()"><div class="actions">
         <button class="btn btn-warning btn-xs" onclick="openLiverPts('${l.id}')">自己加算</button>
         <button class="btn btn-secondary btn-xs" onclick="openEditLiver('${l.id}')">編集</button>
         <button class="btn btn-danger btn-xs" onclick="deleteLiver('${l.id}')">削除</button>
       </div></td>
+    </tr>
+    <tr class="expand-row" id="exp_l_${l.id}">
+      <td colspan="6" style="padding:0 0 0 44px">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <thead><tr style="color:var(--text-muted);font-size:11px;border-bottom:1px solid var(--border)">
+            <th style="padding:6px 8px;text-align:left;font-weight:600">日時</th>
+            <th style="padding:6px 8px;text-align:left;font-weight:600">種別</th>
+            <th style="padding:6px 8px;text-align:left;font-weight:600">ユーザー / 景品</th>
+            <th style="padding:6px 8px;text-align:left;font-weight:600">MAC / 遊び方</th>
+            <th style="padding:6px 8px;text-align:left;font-weight:600">開始〜終了</th>
+            <th style="padding:6px 8px;text-align:right;font-weight:600">手数</th>
+            <th style="padding:6px 8px;text-align:right;font-weight:600">ポイント</th>
+          </tr></thead>
+          <tbody>${actRows}</tbody>
+        </table>
+      </td>
     </tr>`;
   }).join('');
+}
+
+function toggleExpandLiver(liverId) {
+  const row = document.getElementById('exp_l_' + liverId);
+  const btn = document.getElementById('expbtn_l_' + liverId);
+  if (!row) return;
+  const open = !row.classList.contains('open');
+  row.classList.toggle('open', open);
+  if (btn) btn.classList.toggle('open', open);
 }
 
 function renderUsers() {
@@ -848,29 +1076,46 @@ function toggleExpand(userId) {
 
 function renderLog() {
   const body = document.getElementById('logBody');
-  const acts = [...state.activities].sort((a,b) => b.timestamp > a.timestamp ? 1 : -1);
+  // 表示時刻（endPlayTime → startPlayTime → timestamp の優先順）で昇順ソート
+  const actSortKey = a => new Date(a.endPlayTime || a.startPlayTime || a.timestamp).getTime();
+  let acts = [...state.activities].sort((a,b) => actSortKey(a) - actSortKey(b));
+  if (logFilter === 'win')  acts = acts.filter(a => a.type === 'liver_win' || (a.type !== 'liver_lose' && a.type !== 'sync'));
+  if (logFilter === 'lose') acts = acts.filter(a => a.type === 'liver_lose');
   if (!acts.length) {
-    body.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">📋</div>アクティビティがありません</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div>アクティビティがありません</div></td></tr>`;
     return;
   }
   body.innerHTML = acts.map(a => {
-    const user  = state.users.find(u => u.id === a.userId);
-    const liver = state.livers.find(l => l.id === a.liverId);
-    const badge = a.type==='sync' ? 'badge-sync' : a.type==='liver_win' ? 'badge-self' : 'badge-get';
-    const label = a.type==='sync' ? 'シンクロ' : a.type==='liver_win' ? '景品獲得' : 'アクスタ手数';
-    const pts   = a.type==='liver_win' ? a.count * POINTS.SELF : a.count * 70;
-    const actorName = a.type==='liver_win'
+    const isLose = a.type === 'liver_lose';
+    const user   = state.users.find(u => u.id === a.userId);
+    const liver  = state.livers.find(l => l.id === a.liverId);
+    const badge  = a.type==='sync' ? 'badge-sync' : a.type==='liver_win' ? 'badge-self' : isLose ? 'badge-lose' : 'badge-get';
+    const label  = a.type==='sync' ? 'シンクロ' : a.type==='liver_win' ? '景品獲得' : isLose ? '失敗' : 'アクスタ手数';
+    const pts    = a.type==='liver_win' ? a.count * POINTS.SELF : isLose ? 0 : a.count * 70;
+    const turns  = (a.type==='liver_win' || isLose) ? (a.turn ?? a.count) : a.count;
+    const actorName = (a.type==='liver_win' || isLose)
       ? (liver ? esc(liver.name) : '不明') + ' <span style="font-size:10px;color:var(--text-dim)">(ライバー)</span>'
       : (user ? esc(user.name) : esc(a.userId||''));
     const roomNote  = a.roomId  ? `<div style="font-size:10px;color:var(--text-dim);font-family:monospace">${esc(a.roomId)}</div>` : '';
     const prizeNote = a.prizeName ? `<div style="font-size:10px;color:var(--text-dim)">${esc(a.prizeName)}</div>` : '';
-    return `<tr>
-      <td style="font-size:11px;color:var(--text-muted)">${fmtTs(a.timestamp)}</td>
+    const macVal    = a.mac && a.mac !== '—' ? a.mac : '';
+    const bName     = boothName(macVal);
+    const macCell   = macVal
+      ? `<span style="font-family:monospace;font-size:11px">${esc(macVal)}</span>${bName ? `<div style="font-size:10px;color:var(--text-dim)">${esc(bName)}</div>` : ''}`
+      : '—';
+    const timeRange = (a.startPlayTime || a.endPlayTime)
+      ? `<div style="font-size:10px;color:var(--text-dim);white-space:nowrap">${fmtJST(a.startPlayTime)}</div><div style="font-size:10px;color:var(--text-dim);white-space:nowrap">${fmtJST(a.endPlayTime)}</div>`
+      : '—';
+    const ptsCell  = isLose ? '<span style="color:var(--text-dim)">—</span>' : `<span style="color:var(--primary);font-weight:700">+${pts.toLocaleString()}pt</span>`;
+    return `<tr style="${isLose ? 'opacity:.55' : ''}">
+      <td style="font-size:11px;color:var(--text-muted)">${a.endPlayTime ? fmtJST(a.endPlayTime) : fmtTs(a.timestamp)}</td>
       <td>${actorName}</td>
-      <td>${a.type==='liver_win' ? '—' : (liver ? esc(liver.name) : '不明')}${prizeNote}</td>
+      <td>${(a.type==='liver_win'||isLose) ? '—' : (liver ? esc(liver.name) : '不明')}${prizeNote}</td>
       <td><span class="badge ${badge}">${label}</span>${roomNote}</td>
-      <td style="text-align:right;font-weight:700">${a.count}</td>
-      <td style="text-align:right;color:var(--primary);font-weight:700">+${pts.toLocaleString()}pt</td>
+      <td>${macCell}</td>
+      <td style="font-size:11px">${timeRange}</td>
+      <td style="text-align:right;font-weight:700">${turns}</td>
+      <td style="text-align:right">${ptsCell}</td>
       <td><button class="btn btn-danger btn-xs" onclick="deleteActivity('${a.id}')">削除</button></td>
     </tr>`;
   }).join('');
@@ -1082,19 +1327,14 @@ document.getElementById('btnSaveSettings').onclick = () => {
 };
 
 document.getElementById('btnTestGas').onclick = async () => {
-  const url = document.getElementById('settingsDataGasUrl').value.trim();
-  if (!url) { toast('GAS URLを入力してください', 'error'); return; }
   try {
-    const res = await fetch(url + '?action=read', { redirect: 'follow' });
+    const res = await fetch(GAS_URL + '?action=read', { redirect: 'follow' });
     if (res.ok) { toast('接続成功！', 'success'); updateGasStatusUI(true); }
     else throw new Error('HTTP ' + res.status);
   } catch(e) { toast('接続エラー: ' + e.message, 'error'); }
 };
 
-document.getElementById('btnSync').onclick = () => {
-  if (getDataGasUrl()) syncFromGAS();
-  else toast('設定でGAS URLを設定してください', 'info');
-};
+document.getElementById('btnSync').onclick = () => syncFromGAS();
 
 document.getElementById('btnExport').onclick = () => {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -1130,6 +1370,14 @@ document.getElementById('btnClearLog').onclick = () => {
   scheduleSave();
   toast('全データをリセットしました', 'info');
 };
+
+document.querySelectorAll('.log-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    logFilter = btn.dataset.filter;
+    document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.toggle('active', b === btn));
+    renderLog();
+  });
+});
 
 // ============================================================
 // TABS
@@ -1207,12 +1455,15 @@ async function fetchPlayHistory(userId, limit, maxPage, statusEl) {
 function parsePlayHistory(records) {
   if (!records.length) return [];
   return records.map(r => {
-    const statusRaw = String(r.status ?? r.result ?? '');
-    const isWin = /win|獲得|success/i.test(statusRaw) || statusRaw === '1';
-    const turn  = Number(r.turn ?? r.turns ?? 0);
-    const prizeName = String(r.prize_name ?? r.prize ?? r.promo_name ?? r.item_name ?? '—');
-    const roomId    = String(r.room_id ?? r.roomId ?? '—');
-    return { prizeName, roomId, isWin, turn, statusRaw, liverMatch: null, _raw: r };
+    const statusRaw    = String(r.status ?? r.result ?? '');
+    const isWin        = /win|獲得|success/i.test(statusRaw) || statusRaw === '1';
+    const turn         = Number(r.turn ?? r.turns ?? 0);
+    const prizeName    = String(r.prize_name ?? r.prize ?? r.promo_name ?? r.item_name ?? '—');
+    const roomId       = String(r.room_id ?? r.roomId ?? '—');
+    const mac          = String(r.mac ?? '—');
+    const startPlayTime = toISOSafe(r.start_play_time ?? r.startPlayTime ?? null);
+    const endPlayTime   = toISOSafe(r.end_play_time   ?? r.endPlayTime   ?? null);
+    return { prizeName, roomId, mac, startPlayTime, endPlayTime, isWin, turn, statusRaw, liverMatch: null, _raw: r };
   });
 }
 
@@ -1227,7 +1478,7 @@ function renderApiResults() {
   const body = document.getElementById('apiResultBody');
   const wins = apiPlays.filter(p => p.isWin).length;
   document.getElementById('apiResultCount').textContent = `（${apiPlays.length}件 / WIN ${wins}件）`;
-  if (!apiPlays.length) { body.innerHTML = `<tr><td colspan="8"><div class="empty">データがありません</div></td></tr>`; return; }
+  if (!apiPlays.length) { body.innerHTML = `<tr><td colspan="10"><div class="empty">データがありません</div></td></tr>`; return; }
   body.innerHTML = apiPlays.map((p, i) => {
     const liverOpts = '<option value="">— 選択 —</option>' + state.livers.map(l =>
       `<option value="${esc(l.id)}" ${p.liverMatch===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
@@ -1236,10 +1487,20 @@ function renderApiResults() {
     const statusBadge = p.isWin
       ? `<span style="color:var(--success);font-weight:700">獲得</span>`
       : `<span style="color:var(--danger)">失敗</span>`;
+    const macVal  = p.mac && p.mac !== '—' ? p.mac : '';
+    const bName   = boothName(macVal);
+    const macCell = macVal
+      ? `<span style="font-family:monospace;font-size:11px">${esc(macVal)}</span>${bName ? `<div style="font-size:10px;color:var(--text-dim)">${esc(bName)}</div>` : ''}`
+      : '—';
+    const timeCell = (p.startPlayTime || p.endPlayTime)
+      ? `<div style="font-size:10px;white-space:nowrap">${fmtJST(p.startPlayTime)}</div><div style="font-size:10px;color:var(--text-dim);white-space:nowrap">${fmtJST(p.endPlayTime)}</div>`
+      : '—';
     return `<tr style="${!p.isWin ? 'opacity:.45' : ''}">
       <td><input type="checkbox" class="api-row-check" data-idx="${i}" ${(p.isWin && !alreadyDone) ? 'checked' : ''}></td>
       <td style="font-size:12px">${esc(p.prizeName)}${alreadyDone ? ' <span style="color:var(--success);font-size:10px">✓済</span>' : ''}</td>
-      <td style="font-size:10px;font-family:monospace;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(p.roomId)}</td>
+      <td style="font-size:10px;font-family:monospace;color:var(--text-dim);max-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(p.roomId)}</td>
+      <td style="font-size:12px">${macCell}</td>
+      <td style="font-size:11px">${timeCell}</td>
       <td style="text-align:center">${statusBadge}</td>
       <td style="text-align:center;font-weight:700;color:var(--primary)">${p.turn}</td>
       <td style="text-align:center;color:var(--primary);font-weight:700">${p.isWin ? '+' + pts + 'pt' : '—'}</td>
@@ -1360,16 +1621,16 @@ function refreshLiverApiSelect() {
 
 // 日付フィールドを自動検出
 function detectDateField(record) {
-  const candidates = ['created_at','played_at','play_date','date','timestamp','play_at','createdAt','playedAt','play_time'];
+  const candidates = ['start_play_time','created_at','played_at','play_date','date','timestamp','play_at','createdAt','playedAt','play_time'];
   for (const key of candidates) if (key in record && record[key]) return key;
   return null;
 }
 
-// 集計期間内かチェック（フィールド不明の場合は含める）
+// 集計期間内かチェック（Unix秒・ms・ISO文字列 全対応。フィールド不明の場合は含める）
 function isInCollectionPeriod(dateVal) {
-  if (!dateVal) return true;
-  const d = new Date(dateVal);
-  if (isNaN(d.getTime())) return true;
+  if (!dateVal && dateVal !== 0) return true;
+  const d = toDate(dateVal);
+  if (!d) return true;
   return d >= COLLECTION_START && d <= COLLECTION_END;
 }
 
@@ -1407,27 +1668,40 @@ async function autoImportLiverWins(liver, statusCb) {
 
     for (const r of all) {
       const statusRaw = String(r.status ?? r.result ?? '');
-      const isWin = /win|獲得|success/i.test(statusRaw) || statusRaw === '1';
-      if (!isWin) { result.lose++; continue; }
-
+      const isWin  = /win|獲得|success/i.test(statusRaw) || statusRaw === '1';
+      const turn   = Number(r.turn ?? r.turns ?? 0);
       const roomId    = String(r.room_id ?? r.roomId ?? '—');
       const prizeName = String(r.prize_name ?? r.prize ?? r.promo_name ?? r.item_name ?? '—');
+      const mac       = String(r.mac ?? '—');
+      const startPlayTime = toISOSafe(r.start_play_time ?? r.startPlayTime ?? null);
+      const endPlayTime   = toISOSafe(r.end_play_time   ?? r.endPlayTime   ?? null);
       const dateVal   = dateField ? r[dateField] : null;
 
       if (!isInCollectionPeriod(dateVal)) { result.outOfRange++; continue; }
 
-      if (roomId !== '—' && state.activities.find(a => a.roomId === roomId && a.type === 'liver_win')) {
-        result.skipped++;
-        continue;
+      const actType = isWin ? 'liver_win' : 'liver_lose';
+
+      if (roomId !== '—') {
+        const existing = state.activities.find(a => a.roomId === roomId && a.type === actType);
+        if (existing) {
+          // バックフィル: 既存レコードに欠損フィールドを補完する
+          let updated = false;
+          if (!existing.startPlayTime && startPlayTime) { existing.startPlayTime = startPlayTime; updated = true; }
+          if (!existing.endPlayTime   && endPlayTime)   { existing.endPlayTime   = endPlayTime;   updated = true; }
+          if ((!existing.mac  || existing.mac  === '—') && mac  !== '—') { existing.mac  = mac;  updated = true; }
+          if (!existing.turn  && turn)  { existing.turn  = turn;  updated = true; }
+          if (updated) result.imported++; else result.skipped++;
+          continue;
+        }
       }
 
-      const playTs = (dateVal && !isNaN(new Date(dateVal).getTime()))
-        ? new Date(dateVal).toISOString() : ts();
+      const playTs = toISOSafe(dateVal) ?? ts();
       state.activities.push({
-        id: uid(), liverId: liver.id, type: 'liver_win',
-        count: 1, timestamp: playTs, roomId, prizeName
+        id: uid(), liverId: liver.id, type: actType,
+        count: isWin ? 1 : 0, turn,
+        timestamp: playTs, roomId, prizeName, mac, startPlayTime, endPlayTime
       });
-      result.imported++;
+      if (isWin) result.imported++; else result.lose++;
     }
   } catch(e) {
     console.error('[AutoImport] ' + liver.name + ':', e.message);
@@ -1667,7 +1941,7 @@ function renderLiverApiResults() {
     `（${liverApiPlays.length}件 / WIN ${wins}件 / 記録済 ${recorded}件）`;
 
   if (!liverApiPlays.length) {
-    body.innerHTML = `<tr><td colspan="6"><div class="empty">データがありません</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="8"><div class="empty">データがありません</div></td></tr>`;
     return;
   }
   body.innerHTML = liverApiPlays.map(p => {
@@ -1681,9 +1955,19 @@ function renderLiverApiResults() {
     else if (!inPeriod)  importBadge = `<span style="color:var(--text-dim)">期間外</span>`;
     else if (alreadyDone)importBadge = `<span style="color:var(--success);font-weight:700">✓ 記録済</span>`;
     else                 importBadge = `<span style="color:var(--warning)">未記録</span>`;
+    const macVal  = p.mac && p.mac !== '—' ? p.mac : '';
+    const bName   = boothName(macVal);
+    const macCell = macVal
+      ? `<span style="font-family:monospace;font-size:11px">${esc(macVal)}</span>${bName ? `<div style="font-size:10px;color:var(--text-dim)">${esc(bName)}</div>` : ''}`
+      : '—';
+    const timeCell = (p.startPlayTime || p.endPlayTime)
+      ? `<div style="font-size:10px;white-space:nowrap">${fmtJST(p.startPlayTime)}</div><div style="font-size:10px;color:var(--text-dim);white-space:nowrap">${fmtJST(p.endPlayTime)}</div>`
+      : '—';
     return `<tr style="${(!p.isWin || !inPeriod) ? 'opacity:.45' : ''}">
       <td style="font-size:12px">${esc(p.prizeName)}</td>
       <td style="font-size:10px;font-family:monospace;color:var(--text-dim)">${esc(p.roomId)}</td>
+      <td style="font-size:12px">${macCell}</td>
+      <td style="font-size:11px">${timeCell}</td>
       <td style="text-align:center">${statusBadge}</td>
       <td style="text-align:center;font-weight:700;color:var(--text-muted)">${p.turn}</td>
       <td style="text-align:center;color:var(--primary);font-weight:700">${p.isWin ? '+' + POINTS.SELF + 'pt' : '—'}</td>
@@ -1707,20 +1991,25 @@ if (_tok) {
   document.getElementById('apiTokenStatus').className = 'ok-text';
 }
 
-// Update GAS status
-if (getDataGasUrl()) {
-  setSyncStatus('connected', 'GAS設定済み');
-  startPoll();
-}
+// GAS は常に接続済み
+setSyncStatus('connected', 'GAS接続済み');
 
 // 自動更新スケジューラー起動
 scheduleNextAutoImport();
 
-// ページ読込時に集計期間内なら即時更新
+// ブース種別リストをトークンの有無に関係なく GAS から読込み
+loadBoothTypesFromGAS();
+
+// ページ読込時の即時処理（集計期間内）
 const _now = new Date();
-if (_now >= COLLECTION_START && _now <= COLLECTION_END && getApiToken()) {
-  // 3秒後に実行（ページ描画完了を待つ）
-  setTimeout(() => runScheduledTask(true), 3000);
+if (_now >= COLLECTION_START && _now <= COLLECTION_END) {
+  if (getApiToken()) {
+    // 更新用PC: API取込 → 自動保存ON なら GAS へ保存
+    setTimeout(() => runScheduledTask(true), 3000);
+  } else {
+    // 表示用PC: GAS から最新データを読み込む
+    setTimeout(() => syncFromGAS(), 3000);
+  }
 }
 </script>
 </body>
