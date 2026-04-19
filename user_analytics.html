@@ -144,7 +144,7 @@
         <p id="kpi-stickiness" class="text-3xl font-bold mt-1 text-white">0.0%</p>
     </div>
     <div class="card p-5 border-t-2 border-amber-500">
-        <p class="text-slate-400 text-xs font-bold">課金ユーザー率 (PUR)※Lv1かつ無課金者は除外</p>
+        <p class="text-slate-400 text-xs font-bold">課金ユーザー率 (PUR)※BANNED/DELETED除く</p>
         <p id="kpi-pur" class="text-3xl font-bold mt-1 text-amber-400">0.0%</p>
     </div>
     <div class="card p-5 border-t-2 border-emerald-500">
@@ -1172,8 +1172,8 @@ function updateRevenueMetrics() {
     const tot = allData.length||0;
     let paying = 0;
     if (tot > 0) paying = allData.filter(d => (salesMap[normalizeName(d.NAME)] || 0) > 0).length;
-    const totLv2 = allData.filter(d => d.lvNum >= 2).length;
-    const pur  = totLv2>0  ? ((paying/totLv2)*100).toFixed(1) : 0;
+    const eligible = allData.filter(d => { const s = (d.STATUS || '').toUpperCase(); return s !== 'BANNED' && s !== 'DELETED'; }).length;
+    const pur  = eligible > 0 ? ((paying / eligible) * 100).toFixed(1) : 0;
     const dates = allData.map(d=>d.date).filter(d=>d&&d.isValid());
     const elapsedDays = dates.length > 0 ? Math.max(1, dayjs().diff(dayjs.min(dates), 'day')) : 0;
     const forecast = elapsedDays > 0 ? Math.floor((rev / elapsedDays) * 30) : 0;
@@ -2471,6 +2471,26 @@ async function doLoad(target) {
         }
 
         if (allData.length > 0) applyFilters();
+
+        // ── DAU/WAU/MAU をダッシュボードAPIから自動取得 ──
+        if (token) {
+            try {
+                const summRes  = await fetch('https://api-admin.bountyhunters.app/api/dashboard/summary', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (summRes.ok) {
+                    const summJson = await summRes.json();
+                    const d = summJson.data || {};
+                    const dauVal = d.daily_active_user_summary?.value;
+                    const wauVal = d.weekly_active_user_summary?.value;
+                    const mauVal = d.monthly_active_user_summary?.value;
+                    if (dauVal != null) document.getElementById('inputDau').value = dauVal;
+                    if (wauVal != null) document.getElementById('inputWau').value = wauVal;
+                    if (mauVal != null) document.getElementById('inputMau').value = mauVal;
+                    if (dauVal != null || wauVal != null || mauVal != null) updateRevenueMetrics();
+                }
+            } catch (_) { /* DAU/WAU/MAU取得失敗は無視 */ }
+        }
 
         const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
         localStorage.setItem(LOAD_LAST_KEY, now);
