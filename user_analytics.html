@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -87,39 +87,21 @@
         <h1 class="text-3xl font-extrabold tracking-tight">Game Intelligence <span style="color:#38bdf8">Dashboard</span></h1>
         <p class="text-slate-400 text-sm mt-1">ユーザーアナリティクス</p>
     </div>
-    <div class="flex flex-col gap-2 items-end">
-        <div class="flex items-center gap-3 flex-wrap justify-end">
-            <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-slate-600 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>印刷
-            </button>
-            <button onclick="toggleAlertPanel()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-slate-600 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>アラート設定
-            </button>
-            <button onclick="toggleManual()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-slate-600 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>マニュアル
-            </button>
-            <!-- データ読み込みボタン（メイン） -->
-            <button id="btnOpenLoadPanel" class="bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold py-2 px-4 rounded-md border border-sky-400 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                データ読み込み
-                <span id="loadDot" class="sync-dot idle"></span>
-            </button>
-            <!-- Drive同期（サブ） -->
-            <button onclick="toggleSyncPanel()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-slate-600 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                Drive同期
-                <span id="syncDot" class="sync-dot idle"></span>
-            </button>
-            <!-- CSVファイル読み込み（フォールバック） -->
-            <div class="bg-slate-800/60 p-1.5 rounded-md border border-slate-600 flex items-center gap-2 flex-wrap">
-                <span class="text-xs font-bold text-slate-400 ml-1">CSV手動:</span>
-                <input type="file" id="csvFile" accept=".csv" title="ユーザーCSV" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-600 file:text-slate-300 hover:file:bg-slate-500 cursor-pointer">
-                <input type="file" id="salesFile" accept=".csv" title="売上CSV" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-600 file:text-slate-300 hover:file:bg-slate-500 cursor-pointer">
-                <input type="file" id="boothFiles" accept=".csv" multiple title="ブースログCSV" class="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-600 file:text-slate-300 hover:file:bg-slate-500 cursor-pointer">
-                <span id="boothStatus" class="text-xs text-violet-400 font-bold hidden"></span>
-                <button onclick="resetBoothData()" class="text-xs text-slate-500 hover:text-red-400 border border-slate-700 hover:border-red-500 px-2 py-1 rounded transition-colors" title="ブースデータをリセット">🗑</button>
-            </div>
-        </div>
+    <div class="flex items-center gap-2 flex-wrap">
+        <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-slate-600 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>印刷
+        </button>
+        <button onclick="toggleAlertPanel()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-slate-600 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>アラート設定
+        </button>
+        <button onclick="toggleManual()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold py-2 px-4 rounded-md border border-slate-600 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>マニュアル
+        </button>
+        <button id="btnOpenLoadPanel" class="bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold py-2 px-4 rounded-md border border-sky-400 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            データ読み込み
+            <span id="loadDot" class="sync-dot idle"></span>
+        </button>
     </div>
 </div>
 
@@ -466,27 +448,10 @@
     </div>
 </div>
 
-<!-- ===== GAS 同期パネル ===== -->
-<div id="syncPanel" class="hidden fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4 backdrop-blur-sm no-print">
-    <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-xl border border-indigo-700/60">
-        <div class="p-5 border-b border-slate-700 flex justify-between items-center">
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                Google Drive 同期
-            </h2>
-            <button onclick="toggleSyncPanel()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
-        </div>
-        <div class="p-5 space-y-4 text-sm">
+<!-- syncPanel: GAS自動取得に移行のため削除 -->
+<div id="syncPanel" class="hidden"><input type="hidden" id="gasUrl"><span id="syncDot" class="hidden"></span><span id="syncStatusMsg" class="hidden"></span><span id="syncLastFetched" class="hidden"></span></div>
 
-            <!-- URL入力 -->
-            <div>
-                <label class="block text-xs font-bold text-slate-300 mb-1">GAS ウェブアプリ URL</label>
-                <input type="text" id="gasUrl" class="input-field text-xs font-mono"
-                    placeholder="https://script.google.com/macros/s/AKfycbz5MSzVaLILxQ2NHeaMT6RzMIIZlu90jBvh6crDMRzlo5CScieTsKambicub_9Smwn-/exec">
-            </div>
-
-            <!-- フロー説明 -->
-            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+<div style="display:none"><!-- 旧syncPanel削除済み --><div class="grid" style="display:none">
                 <div id="flowStep1" class="rounded-lg p-3 border border-slate-600 bg-slate-700/40">
                     <div class="text-lg mb-1">📂</div>
                     <div class="font-bold text-slate-200">① ローカル読み込み</div>
@@ -555,52 +520,24 @@
             </div>
         </div>
 
-        <div class="p-4 border-t border-slate-700 flex flex-wrap justify-between items-center gap-2">
-            <span id="syncLastFetched" class="text-xs text-slate-500"></span>
-            <div class="flex gap-2">
-                <button onclick="toggleSyncPanel()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md text-sm">閉じる</button>
-                <!-- アップロード（ローカル→Drive） -->
-                <button onclick="uploadToDrive()" id="btnUpload"
-                    class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-md text-sm flex items-center gap-1.5 disabled:opacity-40"
-                    title="読み込み済みのCSVをDriveに保存します">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                    Driveに保存
-                </button>
-                <!-- ダウンロード（Drive→ダッシュボード） -->
-                <button onclick="syncFromDrive()" id="btnSync"
-                    class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-md text-sm flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    Driveから取得
-                </button>
-                <!-- 週次アクティブUID保存 -->
-                <button onclick="saveWeeklyActiveUsers()" id="btnWeeklyActive"
-                    class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-md text-sm flex items-center gap-1.5"
-                    title="最終プレイが直近7日以内のユーザーIDをJSONでDriveに保存します">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    週次アクティブUID保存
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- ===== データ読み込みパネル ===== -->
 <div id="loadPanel" class="hidden fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4 backdrop-blur-sm no-print">
-    <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg border border-sky-700/60">
-        <div class="p-5 border-b border-slate-700 flex justify-between items-center">
+    <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg border border-sky-700/60 flex flex-col max-h-[90vh]">
+        <div class="p-5 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
                 <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 データ読み込み
             </h2>
             <button id="btnCloseLoadPanel" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
         </div>
-        <div class="p-5 space-y-4 text-sm">
+        <div class="p-5 space-y-4 text-sm overflow-y-auto flex-1">
 
             <!-- GAS URL -->
             <div>
                 <label class="block text-xs font-bold text-slate-300 mb-1">GAS ウェブアプリ URL</label>
                 <input type="text" id="loadGasUrl" class="input-field text-xs font-mono"
-                    placeholder="https://script.google.com/macros/s/.../exec">
+                    placeholder="https://script.google.com/macros/s/AKfycbwaE-y9B1hhObxdoQVY5O259RoVvP-1pSk7W_A0yWchB-S3Fw_Uf7isLuPaEEaEGl9zww/exec">
             </div>
 
             <!-- アクセストークン -->
@@ -652,12 +589,43 @@
                     </div>
                 </label>
             </div>
+
+            <!-- 定期実行設定 -->
+            <div class="bg-amber-900/20 border border-amber-700/50 rounded-lg p-3 space-y-2">
+                <p class="text-xs font-bold text-amber-300">⏰ 定期自動実行の設定</p>
+                <p class="text-xs text-slate-400">上のトークンをGASのスクリプトプロパティに保存すると、GASのトリガー（scheduledFetch: 1時間おき）で自動取得が動作します。</p>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="saveTokenToGasFromLoad()" class="bg-amber-700 hover:bg-amber-600 text-white font-bold py-1.5 px-3 rounded text-xs flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                        GASにトークン保存
+                    </button>
+                    <button onclick="resetBoothOnGas()" class="bg-slate-700 hover:bg-red-900 text-slate-300 hover:text-red-200 font-bold py-1.5 px-3 rounded text-xs flex items-center gap-1 border border-slate-600 hover:border-red-700 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        ブースログを2026-01-29から再取得
+                    </button>
+                </div>
+            </div>
+
+            <!-- ブース状態 -->
+            <div class="text-xs text-violet-400 font-bold min-h-[1rem]"><span id="boothStatus"></span></div>
         </div>
 
-        <div class="p-4 border-t border-slate-700 flex flex-wrap justify-between items-center gap-2">
+        <div class="p-4 border-t border-slate-700 flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
             <span id="loadLastFetched" class="text-xs text-slate-500"></span>
             <div class="flex gap-2 flex-wrap justify-end">
                 <button id="btnCloseLoadPanel2" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-3 rounded-md text-sm">閉じる</button>
+                <button id="btnDailyUids"
+                    class="bg-teal-700 hover:bg-teal-600 text-white font-bold py-2 px-3 rounded-md text-sm flex items-center gap-1.5"
+                    title="前日・当日プレイしたユーザーIDをDriveに保存（booth_log.csv を参照）">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    日次UID保存
+                </button>
+                <button id="btnWeeklyUids"
+                    class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-3 rounded-md text-sm flex items-center gap-1.5"
+                    title="直近7日以内にプレイしたユーザーIDをDriveに保存">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+                    週次UID保存
+                </button>
                 <button id="btnLoadUserSales"
                     class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-3 rounded-md text-sm flex items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
@@ -678,8 +646,8 @@
     </div>
 </div>
 
-<!-- ===== API自動取得パネル ===== -->
-<div id="apiPanel" class="hidden fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4 backdrop-blur-sm no-print">
+<!-- API自動取得パネルはGAS自動取得に移行のため削除 -->
+<div id="apiPanel" class="hidden">
     <div class="bg-slate-800 rounded-xl shadow-2xl w-full max-w-xl border border-teal-700/60">
         <div class="p-5 border-b border-slate-700 flex justify-between items-center">
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
@@ -1702,423 +1670,193 @@ function exportCSV() {
 }
 
 // =============================================
-// GAS 同期 — アップロード / ダウンロード
+// ローカルデータ保持
 // =============================================
-const GAS_URL_KEY  = 'gas_dashboard_url';
-const GAS_AUTO_KEY = 'gas_dashboard_auto';
-
-// ローカルで読み込み済みのCSV生テキストを保持
 let localUserCsv  = null;
 let localSalesCsv = null;
-let boothMacCount = 0;   // ローカルで読み込んだブース台数（lastPlayMapに蓄積）
+let boothMacCount = 0;
 
-// パネル開閉
-function toggleSyncPanel() {
-    document.getElementById('syncPanel').classList.toggle('hidden');
-    // load_gas_url → gas_dashboard_url の順で共通URLを読み込む
-    const saved = localStorage.getItem(LOAD_GAS_URL_KEY) || localStorage.getItem(GAS_URL_KEY) || '';
-    document.getElementById('gasUrl').value = saved;
-    const auto = localStorage.getItem(GAS_AUTO_KEY) === '1';
-    setAutoToggle(auto);
-    updateFlowSteps();
-}
+// =============================================
+// GAS 操作（loadPanel から実行）
+// =============================================
 
-// トグルUI
-document.getElementById('autoSync').addEventListener('change', function() {
-    setAutoToggle(this.checked);
-});
-function setAutoToggle(on) {
-    document.getElementById('autoSync').checked = on;
-    document.getElementById('toggleBg').style.background = on ? '#4f46e5' : '';
-    document.getElementById('toggleDot').style.transform = on ? 'translateX(20px)' : '';
-}
-
-// ステップ表示更新
-function updateFlowSteps() {
-    const hasLocal = localUserCsv || localSalesCsv || boothMacCount > 0;
-    const s1 = document.getElementById('stepStatus1');
-    const s2 = document.getElementById('stepStatus2');
-    if (s1) {
-        const parts = [];
-        if (localUserCsv)      parts.push('ユーザー');
-        if (localSalesCsv)     parts.push('売上');
-        if (boothMacCount > 0) parts.push(`ブース${boothMacCount}台`);
-        s1.innerText  = hasLocal ? `✅ 読み込み済み (${parts.join('・')})` : '⏳ 未読み込み';
-        s1.className  = 'mt-1 text-xs font-bold ' + (hasLocal ? 'text-emerald-400' : 'text-slate-500');
-    }
-    // ② はアップロード後に updateFlowSteps('uploaded') で更新
-}
-
-// 設定保存（両パネルで共通URLを使うため LOAD_GAS_URL_KEY にも同期）
-function saveGasSettings() {
-    const url  = document.getElementById('gasUrl').value.trim();
-    const auto = document.getElementById('autoSync').checked;
-    if (url) {
-        localStorage.setItem(GAS_URL_KEY, url);
-        localStorage.setItem(LOAD_GAS_URL_KEY, url);
-        // loadPanel の入力欄も更新
-        const loadInput = document.getElementById('loadGasUrl');
-        if (loadInput && !loadInput.value.trim()) loadInput.value = url;
-    }
-    localStorage.setItem(GAS_AUTO_KEY, auto ? '1' : '0');
-}
-
-// 同期ドットとメッセージ
-function setSyncStatus(state, msg) {
-    const dot = document.getElementById('syncDot');
-    if (dot) dot.className = 'sync-dot ' + state;
-    const box = document.getElementById('syncStatusMsg');
-    if (!box) return;
-    if (!msg) { box.classList.add('hidden'); return; }
-    box.classList.remove('hidden');
-    const styles = {
-        loading: 'bg-amber-900/40 border border-amber-700/60 text-amber-200',
-        ok:      'bg-emerald-900/40 border border-emerald-700/60 text-emerald-200',
-        error:   'bg-red-900/40 border border-red-700/60 text-red-200',
-    };
-    box.className = (styles[state] || '') + ' rounded-lg px-4 py-2.5 text-xs font-semibold flex items-center gap-2';
-    box.innerHTML = msg;
-}
-
-function getGasUrl() {
-    const url = document.getElementById('gasUrl').value.trim();
-    if (!url) { setSyncStatus('error', '⚠️ GAS ウェブアプリ URL を入力してください。'); return null; }
-    saveGasSettings();
+function getLoadGasUrl_() {
+    const url = (document.getElementById('loadGasUrl') || {}).value?.trim() || '';
+    if (!url) { setLoadStatus('error', '⚠️ GAS URLを入力してください。'); return null; }
     return url;
 }
 
-// =============================================
-// ② Driveへ保存（ローカル → Drive）
-// =============================================
-async function uploadToDrive() {
-    const url = getGasUrl();
+async function saveTokenToGasFromLoad() {
+    const url   = getLoadGasUrl_();
     if (!url) return;
-
-    if (!localUserCsv && !localSalesCsv) {
-        setSyncStatus('error', '⚠️ 先にユーザーCSV・売上CSVを読み込んでください。<br><span style="opacity:0.7;font-weight:400">ブースログは下の「小分け追記」から別途アップロードしてください。</span>');
-        return;
-    }
-
-    setSyncStatus('loading', '⏳ Drive にアップロード中...');
-
+    const token = (document.getElementById('loadToken') || {}).value?.trim() || '';
+    if (!token) { setLoadStatus('error', '⚠️ トークンを入力してください。'); return; }
+    setLoadStatus('loading', '⏳ GASにトークンを保存中...');
     try {
-        const body = { type: 'both' };
-        if (localUserCsv)  body.user  = localUserCsv;
-        if (localSalesCsv) body.sales = localSalesCsv;
-
-        const res  = await fetch(url, {
-            method:  'POST',
-            body:    JSON.stringify(body),
-            headers: { 'Content-Type': 'text/plain' },
-            redirect:'follow'
-        });
+        const res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'save_token', token }), redirect: 'follow' });
         const json = await res.json();
         if (!json.ok) throw new Error(json.error || '不明なエラー');
-
-        const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
-        document.getElementById('syncLastFetched').innerText = `最終保存: ${now}`;
-        const saved = [localUserCsv&&'ユーザー', localSalesCsv&&'売上'].filter(Boolean).join('・');
-        setSyncStatus('ok', `☁️ Driveへの保存完了（${saved}）— ${now}<br><span style="font-weight:400;opacity:0.8">ブースログは下の「小分け追記」でアップロードしてください。</span>`);
-
-        const s2 = document.getElementById('stepStatus2');
-        if (s2) { s2.innerText = '✅ 保存済み'; s2.className = 'mt-1 text-xs font-bold text-emerald-400'; }
-        const s3 = document.getElementById('stepStatus3');
-        if (s3) { s3.innerText = '✅ 同期可能'; s3.className = 'mt-1 text-xs font-bold text-sky-400'; }
-
+        setLoadStatus('ok', '🔑 トークンをGASに保存しました。GASのトリガーで自動取得が有効になります。');
     } catch (err) {
-        setSyncStatus('error', `❌ アップロード失敗: ${esc(err.message)}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定をご確認ください。</span>`);
+        setLoadStatus('error', `❌ 保存失敗: ${esc(err.message)}`);
     }
 }
 
-// =============================================
-// 週次アクティブUID → Drive に保存
-// =============================================
-async function saveWeeklyActiveUsers() {
-    const url = getGasUrl();
+async function saveDailyUidsPair() {
+    const url = getLoadGasUrl_();
     if (!url) return;
 
-    if (Object.keys(lastPlayMap).length === 0) {
-        setSyncStatus('error', '⚠️ ブースログが読み込まれていません。先にブースログを読み込んでください。');
-        return;
-    }
-
-    const btn = document.getElementById('btnWeeklyActive');
+    const btn = document.getElementById('btnDailyUids');
     if (btn) btn.disabled = true;
-    setSyncStatus('loading', '⏳ 週次アクティブユーザーIDを集計中...');
+    setLoadStatus('loading', '⏳ booth_log.csv を取得中...');
 
     try {
-        const today = dayjs();
-        const threshold = today.subtract(7, 'day').startOf('day');
+        const csvRes  = await fetch(url + '?type=booth_log', { redirect: 'follow' });
+        const csvText = await csvRes.text();
+        if (csvText.trimStart().startsWith('<')) throw new Error('GASがHTMLを返しました。デプロイ設定を確認してください。');
 
-        const weeklyIds = Object.entries(lastPlayMap)
-            .filter(([, lastPlay]) => lastPlay.isAfter(threshold) || lastPlay.isSame(threshold, 'day'))
-            .map(([uid]) => uid);
+        // booth_log.csv をスキャンして play_date ごとのUIDセットを構築
+        const uidsByDate = {};  // { 'YYYY-MM-DD': Set<uid> }
+        const parsed = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
+        (parsed.data || []).forEach(row => {
+            const pid  = (row.user_id   || '').trim();
+            const date = (row.play_date || '').trim();
+            if (!pid || !date) return;
+            if (!uidsByDate[date]) uidsByDate[date] = new Set();
+            uidsByDate[date].add(pid);
+        });
 
-        if (weeklyIds.length === 0) {
-            setSyncStatus('error', '⚠️ 直近7日以内にプレイしたユーザーが見つかりません。');
-            return;
+        const today     = dayjs().format('YYYY-MM-DD');
+        const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+        const targets   = [yesterday, today];
+        const results   = [];
+
+        for (const date of targets) {
+            const uidSet = uidsByDate[date];
+            const uids   = uidSet ? [...uidSet] : [];
+            if (uids.length === 0) {
+                results.push(`${date}: 0名（スキップ）`);
+                continue;
+            }
+            setLoadStatus('loading', `⏳ ${date} の ${uids.length}名を保存中...`);
+            const res = await fetch(url, {
+                method:  'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body:    JSON.stringify({ action: 'save_daily_uids', uids, date }),
+                redirect:'follow'
+            });
+            const json = await res.json();
+            if (!json.ok) throw new Error(`${date}: ${json.error}`);
+            results.push(`${date}: ${uids.length}名 → ${json.filename}`);
         }
 
-        const generatedAt = today.format('YYYY-MM-DD HH:mm:ss');
-        setSyncStatus('loading', `⏳ ${weeklyIds.length}名のUIDをDriveに保存中...`);
-
-        const res = await fetch(url, {
-            method:  'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body:    JSON.stringify({
-                action:       'save_weekly_active',
-                user_ids:     weeklyIds,
-                generated_at: generatedAt,
-                count:        weeklyIds.length
-            }),
-            redirect: 'follow'
-        });
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error || '不明なエラー');
-
-        setSyncStatus('ok', `✅ 週次アクティブUID保存完了（${weeklyIds.length}名）— ${generatedAt}<br><span style="font-weight:400;opacity:0.8">weekly_active_users.json として Drive に保存されました。</span>`);
-        document.getElementById('syncLastFetched').innerText = `最終保存: ${generatedAt}`;
+        setLoadStatus('ok', `✅ 日次UID保存完了<br><span style="font-weight:400;opacity:0.9">${results.join('<br>')}</span>`);
 
     } catch (err) {
-        setSyncStatus('error', `❌ 保存失敗: ${esc(err.message)}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定をご確認ください。</span>`);
+        setLoadStatus('error', `❌ 保存失敗: ${esc(err.message)}`);
     } finally {
         if (btn) btn.disabled = false;
     }
 }
 
-// =============================================
-// ③ Driveから取得（Drive → ダッシュボード）
-// =============================================
-async function syncFromDrive() {
-    const url = getGasUrl();
+async function saveWeeklyUids() {
+    const url = getLoadGasUrl_();
     if (!url) return;
-
-    setSyncStatus('loading', '⏳ Drive からデータを取得中...');
-
+    if (Object.keys(lastPlayMap).length === 0) {
+        setLoadStatus('error', '⚠️ ブースログが読み込まれていません。先にブースログを読み込んでください。'); return;
+    }
+    const btn = document.getElementById('btnWeeklyUids');
+    if (btn) btn.disabled = true;
+    setLoadStatus('loading', '⏳ 週次アクティブユーザーIDを集計中...');
     try {
-        const res  = await fetch(url + '?type=both', { redirect: 'follow' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const threshold = dayjs().subtract(7, 'day').startOf('day');
+        const weeklyIds = Object.entries(lastPlayMap)
+            .filter(([, d]) => d.isAfter(threshold) || d.isSame(threshold, 'day'))
+            .map(([uid]) => uid);
+        if (weeklyIds.length === 0) { setLoadStatus('error', '⚠️ 直近7日以内にプレイしたユーザーが見つかりません。'); return; }
+        setLoadStatus('loading', `⏳ ${weeklyIds.length}名のUIDをDriveに保存中...`);
+        const res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'save_weekly_uids', uids: weeklyIds }), redirect: 'follow' });
         const json = await res.json();
         if (!json.ok) throw new Error(json.error || '不明なエラー');
-
-        const { user, sales, booth } = json.data;
-        let loaded = [];
-
-        if (user) {
-            localUserCsv = user;
-            const parsed = Papa.parse(user.trim(), { header: true, skipEmptyLines: true });
-            processData(parsed.data);
-            loaded.push('ユーザー');
-        }
-        if (sales) {
-            localSalesCsv = sales;
-            const parsed = Papa.parse(sales.trim(), { header: true, skipEmptyLines: true });
-            processSalesData(parsed.data);
-            loaded.push('売上');
-        }
-        if (booth) {
-            // booth は lastPlayMap の JSON文字列 {"player_id": "ISO日時", ...}
-            // V4以前の古いCSVが残っている場合は警告して無視
-            const trimmed = booth.trim();
-            if (trimmed.startsWith('{')) {
-                try {
-                    const map = JSON.parse(trimmed);
-                    lastPlayMap = {};
-                    Object.entries(map).forEach(([pid, iso]) => {
-                        const t = dayjs(iso);
-                        if (t.isValid()) lastPlayMap[pid] = t;
-                    });
-                    const cnt = Object.keys(lastPlayMap).length;
-                    boothMacCount = cnt;
-                    const statusEl = document.getElementById('boothStatus');
-                    statusEl.classList.remove('hidden');
-                    statusEl.textContent = `✓ Drive同期済み (${cnt}名突合)`;
-                    loaded.push('ブースログ');
-                    applyMachineLogToAllData();
-                } catch(err) {
-                    setSyncStatus('error', '⚠️ ブースログのJSONが壊れています。Sync Panelから「Drive台帳リセット」後に再アップロードしてください。');
-                }
-            } else {
-                // 旧形式CSV → リセットを促す
-                setSyncStatus('error', '⚠️ Drive上に旧形式（CSV）のブースログが残っています。Sync Panelの「Drive台帳リセット」を実行してから再アップロードしてください。');
-            }
-        }
-
-        if (!user && !sales && !booth) {
-            setSyncStatus('error', '⚠️ Drive にまだデータがありません。先に「Driveに保存」を実行してください。');
-            return;
-        }
-
-        // ブースログ反映後に再フィルタ
-        if (allData.length > 0) applyFilters();
-
-        const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
-        document.getElementById('syncLastFetched').innerText = `最終取得: ${now}`;
-        setSyncStatus('ok', `✅ 同期完了（${loaded.join('・')}）— ${now}`);
-        updateFlowSteps();
-
+        setLoadStatus('ok', `✅ 週次UID保存完了（${weeklyIds.length}名）— weekly_active_users.json`);
     } catch (err) {
-        setSyncStatus('error', `❌ 取得失敗: ${esc(err.message)}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定・ファイル存在をご確認ください。</span>`);
+        setLoadStatus('error', `❌ 保存失敗: ${esc(err.message)}`);
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
 
-// 後方互換
-async function syncFromGas() { await syncFromDrive(); }
+async function resetBoothOnGas() {
+    const url = getLoadGasUrl_();
+    if (!url) return;
+    if (!confirm('Drive上のbooth_log.csvをリセットし、2026-01-29以降から再取得を開始します。よろしいですか？')) return;
+    setLoadStatus('loading', '⏳ GASにリセットリクエスト送信中...');
+    try {
+        const res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'reset_booth' }), redirect: 'follow' });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '不明なエラー');
+        lastPlayMap   = {};
+        boothMacCount = 0;
+        const boothEl = document.getElementById('boothStatus');
+        if (boothEl) boothEl.textContent = '';
+        if (allData.length > 0) applyFilters();
+        setLoadStatus('ok', '🗑 booth_log.csv をリセットしました。次の定期実行から再取得が始まります。');
+    } catch (err) {
+        setLoadStatus('error', `❌ リセット失敗: ${esc(err.message)}`);
+    }
+}
+
+// 旧syncPanel / apiPanel 関数スタブ（後方互換・エラー回避）
+function toggleSyncPanel() {}
+function toggleApiPanel() {}
+
+function setAutoToggle(on) {}
+function updateFlowSteps() {}
+
+function saveGasSettings() {}
+function setSyncStatus(state, msg) {}
+function getGasUrl() { return getLoadGasUrl_(); }
+
+// ============================================================
+// 旧Drive同期機能スタブ（参照エラー回避）
+// ============================================================
+async function uploadToDrive() {}
 
 // =============================================
-// ブースログ リセット（ローカルのみ）
+// booth_log.csv → lastPlayMap 変換（グローバル共有）
 // =============================================
+function buildLastPlayMapFromCsv(csvText) {
+    const map    = {};
+    const parsed = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
+    (parsed.data || []).forEach(row => {
+        const pid     = (row.user_id   || '').trim();
+        const dateStr = (row.play_date || '').trim();
+        if (!pid || !dateStr) return;
+        const t = dayjs(dateStr);
+        if (!t.isValid()) return;
+        if (!map[pid] || t.isAfter(map[pid])) map[pid] = t;
+    });
+    return map;
+}
+
+// 旧Drive同期スタブ（削除済み機能）
+async function manualFetchBoothLog() { console.warn('manualFetchBoothLog is deprecated'); }
+async function saveWeeklyActiveUsers() { saveWeeklyUids(); }
+async function saveDailyActiveUsers() {}
+async function syncFromDrive() {}
+async function syncFromGas() {}
 function resetBoothData() {
-    if (!confirm('読み込み済みのブースデータをリセットします。よろしいですか？\n（Drive上のデータは削除されません）')) return;
     lastPlayMap = {};
     boothMacCount = 0;
-    const statusEl = document.getElementById('boothStatus');
-    statusEl.classList.add('hidden');
-    statusEl.textContent = '';
-    document.getElementById('boothFiles').value = '';
-    applyMachineLogToAllData();
+    const el = document.getElementById('boothStatus');
+    if (el) el.textContent = '';
     if (allData.length > 0) applyFilters();
-    updateFlowSteps();
 }
-
-// =============================================
-// ブースログ 小分け追記アップロード（Drive台帳へ追記）
-// =============================================
-async function appendBoothToDrive() {
-    const url = getGasUrl();
-    if (!url) return;
-
-    const input = document.getElementById('boothAppendFiles');
-    const files = Array.from(input.files);
-    if (!files.length) {
-        setSyncStatus('error', '⚠️ 追記するファイルを選択してください。');
-        return;
-    }
-
-    const statusEl   = document.getElementById('boothAppendStatus');
-    const progressEl = document.getElementById('boothProgressBar');
-    const labelEl    = document.getElementById('boothProgressLabel');
-    const pctEl      = document.getElementById('boothProgressPct');
-    const fillEl     = document.getElementById('boothProgressFill');
-
-    progressEl.classList.remove('hidden');
-    statusEl.textContent = '';
-
-    // ── STEP 1: ローカルでCSVを1台ずつ読み込み lastPlayMap に蓄積 ──
-    // CSVはGASに送らず、ここでPLAYINGイベントを抽出するだけ
-    // → RAMは1台分のみ、GASへの転送量も最小
-    let parseCount = 0;
-    const localDelta = {};  // 今回のバッチで更新された分だけのMap
-
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        labelEl.textContent = `[1/2] ${i + 1}/${files.length} 台目を解析中: ${file.name}`;
-        pctEl.textContent   = Math.round((i / files.length) * 50) + '%';
-        fillEl.style.width  = Math.round((i / files.length) * 50) + '%';
-
-        await new Promise(resolve => {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: r => {
-                    r.data.forEach(row => {
-                        if ((row.TYPE || '').trim() !== 'PLAYING') return;
-                        const timeStr = (row.TIME || '').trim();
-                        if (!timeStr) return;
-                        const m = (row.INFO || '').match(/['"]player_id['"]\s*:\s*['"]?(\d+)['"]?/);
-                        if (!m) return;
-                        const pid = m[1];
-                        // lastPlayMap（dayjsオブジェクト）とlocalDelta（ISO文字列）を両方更新
-                        const t = dayjs(timeStr);
-                        if (!t.isValid()) return;
-                        if (!lastPlayMap[pid] || t.isAfter(lastPlayMap[pid])) {
-                            lastPlayMap[pid] = t;
-                            localDelta[pid]  = timeStr;
-                        }
-                    });
-                    parseCount++;
-                    resolve();
-                }
-            });
-        });
-        // ブラウザをブロックしないよう少し息継ぎ
-        await new Promise(r => setTimeout(r, 10));
-    }
-
-    // ── STEP 2: deltaJSON（ISO文字列Map）を1回だけGASに送信 ──
-    // 全台合わせても player数×50bytes 程度（数十KB以下）
-    labelEl.textContent = '[2/2] Driveへ送信中...';
-    pctEl.textContent   = '50%';
-    fillEl.style.width  = '50%';
-
-    // lastPlayMap（dayjs オブジェクト）を ISO 文字列の平坦な Map に変換してから送信
-    // localDelta（今回の差分）だけでなく lastPlayMap 全体を送ることで
-    // バッチを繰り返しても Drive 側のデータが上書き消滅しない
-    const boothPayload = {};
-    Object.entries(lastPlayMap).forEach(([pid, dj]) => {
-        boothPayload[pid] = dj.toISOString();
-    });
-
-    let uploadOk = false;
-    try {
-        const res = await fetch(url, {
-            method:  'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body:    JSON.stringify({ type: 'booth_merge', booth: boothPayload }),
-            redirect:'follow'
-        });
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error || '不明なエラー');
-        uploadOk = true;
-    } catch (err) {
-        statusEl.textContent = `⚠️ Drive送信失敗: ${err.message}（ローカルへの反映は完了しています）`;
-    }
-
-    // ── 完了 ──
-    fillEl.style.width = '100%';
-    pctEl.textContent  = '100%';
-    boothMacCount += parseCount;
-
-    applyMachineLogToAllData();
-    if (allData.length > 0) applyFilters();
-
-    const matched = Object.keys(lastPlayMap).length;
-    const boothStatusEl = document.getElementById('boothStatus');
-    boothStatusEl.classList.remove('hidden');
-    boothStatusEl.textContent = `✓ ${boothMacCount}台読込済 (${matched}名突合)`;
-
-    labelEl.textContent  = `完了: ${parseCount}台解析 / ${Object.keys(localDelta).length}件更新`;
-    pctEl.textContent    = '';
-    if (uploadOk) statusEl.textContent = `✅ Driveへ送信完了`;
-    input.value = '';
-    updateFlowSteps();
-
-    setTimeout(() => { progressEl.classList.add('hidden'); }, 4000);
-}
-
-// =============================================
-// Drive上のブース台帳をリセット
-// =============================================
-async function clearBoothOnDrive() {
-    const url = getGasUrl();
-    if (!url) return;
-    if (!confirm('Drive上のブース台帳（dashboard_booth.csv）を削除します。\nよろしいですか？')) return;
-
-    setSyncStatus('loading', '⏳ Drive上のブース台帳を削除中...');
-    try {
-        const res  = await fetch(url, {
-            method:  'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body:    JSON.stringify({ type: 'booth_clear' }),
-            redirect:'follow'
-        });
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error || '不明なエラー');
-        setSyncStatus('ok', '🗑 Drive上のブース台帳を削除しました。次回追記から新しい台帳が作成されます。');
-    } catch (err) {
-        setSyncStatus('error', `❌ 削除失敗: ${err.message}`);
-    }
-}
+async function appendBoothToDrive() {}
+async function clearBoothOnDrive() {}
 
 // =============================================
 // データ読み込みパネル
@@ -2137,6 +1875,8 @@ function initLoadPanel() {
     document.getElementById('btnLoadUserSales').addEventListener('click', () => doLoad('usersales'));
     document.getElementById('btnLoadBooth').addEventListener('click',     () => doLoad('booth'));
     document.getElementById('btnLoadAll').addEventListener('click',       () => doLoad('all'));
+    document.getElementById('btnDailyUids').addEventListener('click',     () => saveDailyUidsPair());
+    document.getElementById('btnWeeklyUids').addEventListener('click',    () => saveWeeklyUids());
     document.getElementById('btnToggleLoadToken').addEventListener('click', () => {
         const el = document.getElementById('loadToken');
         el.type = el.type === 'password' ? 'text' : 'password';
@@ -2205,8 +1945,7 @@ function toggleLoadPanel() {
     const panel = document.getElementById('loadPanel');
     panel.classList.toggle('hidden');
     if (!panel.classList.contains('hidden')) {
-        // load_gas_url → gas_dashboard_url の順で共通URLを読み込む
-        const savedUrl = localStorage.getItem(LOAD_GAS_URL_KEY) || localStorage.getItem(GAS_URL_KEY) || '';
+        const savedUrl = localStorage.getItem(LOAD_GAS_URL_KEY) || localStorage.getItem('gas_dashboard_url') || '';
         document.getElementById('loadGasUrl').value  = savedUrl;
         document.getElementById('loadToken').value   = localStorage.getItem(LOAD_TOKEN_KEY)   || '';
         const auto = localStorage.getItem(LOAD_AUTO_KEY) === '1';
@@ -2224,7 +1963,6 @@ function saveLoadSettings() {
     const auto  = document.getElementById('loadAutoSync').checked;
     if (url) {
         localStorage.setItem(LOAD_GAS_URL_KEY, url);
-        localStorage.setItem(GAS_URL_KEY, url);  // Drive同期パネルとURL共有
         const syncInput = document.getElementById('gasUrl');
         if (syncInput) syncInput.value = url;
     }
@@ -2330,136 +2068,33 @@ async function doLoad(target) {
             setLoadStatus('loading', '⏳ ブースログをGoogle Driveから取得中...');
             setLoadProgress(true, 'booth_log.csv を取得中...');
 
-            // booth_log.csv から lastPlayMap を構築するヘルパー
-            const buildLastPlayMapFromCsv = csvText => {
-                const map    = {};
-                const parsed = Papa.parse(csvText.trim(), { header: true, skipEmptyLines: true });
-                (parsed.data || []).forEach(row => {
-                    const pid     = (row.user_id   || '').trim();
-                    const dateStr = (row.play_date || '').trim();
-                    if (!pid || !dateStr) return;
-                    const t = dayjs(dateStr);
-                    if (!t.isValid()) return;
-                    if (!map[pid] || t.isAfter(map[pid])) map[pid] = t;
-                });
-                return map;
-            };
-
             // Step 1: booth_log.csv を取得して lastPlayMap を初期構築
+            // Drive上の booth_log.csv をそのまま取得（API呼び出しなし）
+            // データ更新はGASスケジュール実行（3時間おき・毎日4時）が担当
             const csvRes1  = await fetch(gasUrl + '?type=booth_log', { redirect: 'follow' });
             const csvText1 = await csvRes1.text();
             if (csvText1.trimStart().startsWith('<')) throw new Error('GASがHTMLを返しました。デプロイ設定を確認してください。');
             lastPlayMap = buildLastPlayMapFromCsv(csvText1);
-
-            // booth_log.csv の最新日付
-            const maxDateInCsv = Object.values(lastPlayMap).reduce((max, d) => (!max || d.isAfter(max)) ? d : max, null);
-            const latestDateStr = maxDateInCsv ? maxDateInCsv.format('YYYY-MM-DD') : '(なし)';
-            const today = dayjs().format('YYYY-MM-DD');
-            const needsFill = !maxDateInCsv || latestDateStr < today;
-
-            setLoadProgress(true, `booth_log.csv 読み込み完了（${Object.keys(lastPlayMap).length}名 / 最新:${latestDateStr}）${needsFill && token ? '。API補完中...' : ''}`);
-
-            // Step 2: 最新日が昨日より古くてトークンがあれば API から欠損日分を補完
-            let apiAdded   = 0;
-            let apiTimedOut = false;
-            if (needsFill && token) {
-                const fillAbort = new AbortController();
-                const fillTimer = setTimeout(() => fillAbort.abort(), 5 * 60 * 1000);
-                try {
-                    const fillRes  = await fetch(gasUrl, {
-                        method:   'POST',
-                        headers:  { 'Content-Type': 'text/plain' },
-                        body:     JSON.stringify({ action: 'fill_booth_log_from_api', token }),
-                        redirect: 'follow',
-                        signal:   fillAbort.signal
-                    });
-                    clearTimeout(fillTimer);
-                    const fillText = await fillRes.text();
-                    if (fillText.trimStart().startsWith('<')) {
-                        setLoadProgress(true, '⚠️ GASがHTMLを返しました。再デプロイを確認してください。');
-                    } else {
-                        const fillJson = JSON.parse(fillText);
-                        console.log('[fill] 完了:', fillJson);
-                        if (fillJson.apiSample) console.log('[fill] APIサンプル:', fillJson.apiSample);
-                        if (fillJson.ok) {
-                            apiAdded    = fillJson.added    || 0;
-                            apiTimedOut = fillJson.timedOut || false;
-                            window._fillDiag = {
-                                processedMachines: fillJson.processedMachines || 0,
-                                machineCount:      fillJson.machineCount      || 0,
-                                totalRecords:      fillJson.totalRecords      || 0,
-                                totalPlaying:      fillJson.totalPlaying      || 0,
-                                totalWithPid:      fillJson.totalWithPid      || 0,
-                                timedOut:          fillJson.timedOut          || false,
-                                latestDate:        fillJson.latestDate        || '',
-                                apiSample:         fillJson.apiSample         || null
-                            };
-                        } else {
-                            console.warn('[fill] GASエラー:', fillJson.error);
-                            setLoadProgress(true, `⚠️ API補完エラー: ${esc(fillJson.error || '不明')}`);
-                        }
-                    }
-                } catch (e2) {
-                    clearTimeout(fillTimer);
-                    if (e2.name === 'AbortError') {
-                        setLoadProgress(true, '⚠️ API補完タイムアウト（5分超）。既存データで続行します。');
-                    } else {
-                        setLoadProgress(true, `⚠️ API補完失敗: ${esc(e2.message)}`);
-                    }
-                }
-            }
-
-            // Step 3: 新規データが追加されていれば booth_log.csv を再取得して再構築
-            if (apiAdded > 0) {
-                setLoadProgress(true, `${apiAdded}件追加済み。booth_log.csv を再取得中...`);
-                const csvRes2  = await fetch(gasUrl + '?type=booth_log', { redirect: 'follow' });
-                const csvText2 = await csvRes2.text();
-                if (!csvText2.trimStart().startsWith('<')) {
-                    lastPlayMap = buildLastPlayMapFromCsv(csvText2);
-                }
-            }
 
             const boothLoaded = Object.keys(lastPlayMap).length > 0;
             if (boothLoaded) {
                 boothMacCount = Object.keys(lastPlayMap).length;
                 const matchCount = applyMachineLogToAllData();
 
-                // lastPlayMap の最新日付を取得
                 const latestPlay = Object.values(lastPlayMap).reduce((m, d) => (!m || d.isAfter(m)) ? d : m, null);
                 const latestStr  = latestPlay ? latestPlay.format('YYYY-MM-DD') : '不明';
 
                 const statusEl = document.getElementById('boothStatus');
                 statusEl.classList.remove('hidden');
 
-                let apiDetail = '';
-                if (needsFill && token) {
-                    const d = window._fillDiag;
-                    if (d) {
-                        const machStr = `${d.processedMachines}/${d.machineCount}台`;
-                        const toStr   = d.timedOut ? ' ⚠️途中' : '';
-                        if (apiAdded > 0) {
-                            apiDetail = ` +${apiAdded}件追加 (${machStr}/rec:${d.totalRecords}/play:${d.totalPlaying}/pid:${d.totalWithPid})${toStr}`;
-                        } else {
-                            apiDetail = ` API補完+0件 (${machStr}/rec:${d.totalRecords}/play:${d.totalPlaying}/pid:${d.totalWithPid})${toStr}`;
-                        }
-                        if (d.apiSample) {
-                            console.log('[fill] APIレスポンス構造:', d.apiSample);
-                        }
-                    } else {
-                        apiDetail = ' (API補完結果なし)';
-                    }
-                } else if (needsFill && !token) {
-                    apiDetail = ' (トークン未入力)';
-                }
-
                 if (allData.length === 0) {
-                    statusEl.textContent = `⚠️ booth_log: ${boothMacCount}件読込 (最新:${latestStr})${apiDetail} — ユーザーデータを先に読み込んでください`;
+                    statusEl.textContent = `⚠️ booth_log: ${boothMacCount}件読込 (最新:${latestStr}) — ユーザーデータを先に読み込んでください`;
                     setLoadStatus('error', `⚠️ ユーザーデータが未読込のためブースログを突合できません。「すべて」ボタンで読み込んでください。`);
                 } else if (matchCount === 0) {
-                    statusEl.textContent = `⚠️ booth_log: ${boothMacCount}件読込 / 0名突合 (最新:${latestStr})${apiDetail} — IDが不一致`;
+                    statusEl.textContent = `⚠️ booth_log: ${boothMacCount}件読込 / 0名突合 (最新:${latestStr}) — IDが不一致`;
                     setLoadStatus('error', `⚠️ ブースログとユーザーデータのIDが一致しません（F12コンソールで確認）`);
                 } else {
-                    statusEl.textContent = `✓ booth_log: ${boothMacCount}件 / ${matchCount}名突合 (最新:${latestStr})${apiDetail}`;
+                    statusEl.textContent = `✓ booth_log: ${boothMacCount}件 / ${matchCount}名突合 (最新:${latestStr})`;
                 }
                 loaded.push('ブースログ');
             }
@@ -2507,285 +2142,40 @@ async function doLoad(target) {
 }
 
 // =============================================
-// API 自動取得パネル
+// 旧API自動取得パネル（削除済み - GAS自動取得に移行）
 // =============================================
-const API_GAS_URL_KEY = 'api_gas_url';
-
-const API_TOKEN_STORE_KEY = 'api_access_token';
-
-function toggleApiPanel() {
-    const panel = document.getElementById('apiPanel');
-    panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) {
-        // パネルを開いたときにURLを復元
-        const savedUrl = localStorage.getItem(API_GAS_URL_KEY) || '';
-        document.getElementById('apiGasUrl').value = savedUrl;
-        // 保存済みトークンがあれば入力欄に復元
-        const savedToken = localStorage.getItem(API_TOKEN_STORE_KEY) || '';
-        if (savedToken) document.getElementById('apiTokenInput').value = savedToken;
-        checkApiToken();
-    }
-}
-
-/** 入力欄またはlocalStorageからトークンを取得する */
-function getApiToken() {
-    // 1. 入力欄を最優先
-    const inputVal = (document.getElementById('apiTokenInput').value || '').trim();
-    if (inputVal) return inputVal;
-    // 2. このダッシュボード用に保存したトークン
-    const stored = localStorage.getItem(API_TOKEN_STORE_KEY) || '';
-    if (stored) return stored;
-    // 3. 同一オリジンにあれば管理画面のトークンも試みる（ローカルHTML以外で開いた場合）
-    return localStorage.getItem('access_token') || '';
-}
-
-function onApiTokenInput() {
-    // 入力されたトークンをlocalStorageに保存して次回以降復元
-    const val = (document.getElementById('apiTokenInput').value || '').trim();
-    if (val) localStorage.setItem(API_TOKEN_STORE_KEY, val);
-    checkApiToken();
-}
-
-function toggleTokenVisibility() {
-    const input = document.getElementById('apiTokenInput');
-    input.type = input.type === 'password' ? 'text' : 'password';
-}
-
-async function pasteTokenFromClipboard() {
-    try {
-        const text = await navigator.clipboard.readText();
-        if (text && text.trim()) {
-            document.getElementById('apiTokenInput').value = text.trim();
-            onApiTokenInput();
-        }
-    } catch (e) {
-        setApiStatus('error', '⚠️ クリップボードへのアクセスが拒否されました。手動で貼り付けてください。');
-    }
-}
-
-function checkApiToken() {
-    const token = getApiToken();
-    const dot = document.getElementById('apiTokenDot');
-    const msg = document.getElementById('apiTokenMsg');
-    if (token) {
-        dot.className = 'sync-dot ok flex-shrink-0';
-        msg.className = 'text-emerald-400 font-bold';
-        msg.textContent = `✅ トークン設定済み (${token.slice(0, 20)}...)`;
-    } else {
-        dot.className = 'sync-dot error flex-shrink-0';
-        msg.className = 'text-red-400';
-        msg.textContent = '❌ トークンが未入力です。上の欄に管理画面のトークンを貼り付けてください。';
-    }
-}
-
-function getApiGasUrl() {
-    const url = document.getElementById('apiGasUrl').value.trim();
-    if (!url) {
-        setApiStatus('error', '⚠️ GAS ウェブアプリ URL を入力してください。');
-        return null;
-    }
-    localStorage.setItem(API_GAS_URL_KEY, url);
-    return url;
-}
-
-function setApiStatus(type, html) {
-    const el = document.getElementById('apiStatusMsg');
-    el.classList.remove('hidden', 'alert-info', 'alert-warn', 'alert-danger');
-    const map = { ok: 'alert-info', loading: 'alert-warn', error: 'alert-danger' };
-    el.classList.add(map[type] || 'alert-info');
-    el.innerHTML = html;
-
-    const dot = document.getElementById('apiDot');
-    dot.className = 'sync-dot ' + (type === 'ok' ? 'ok' : type === 'loading' ? 'loading' : type === 'error' ? 'error' : 'idle');
-}
-
-function setApiProgress(show, label) {
-    const bar = document.getElementById('apiProgressBar');
-    if (show) {
-        bar.classList.remove('hidden');
-        if (label) document.getElementById('apiProgressLabel').textContent = label;
-    } else {
-        bar.classList.add('hidden');
-    }
-}
-
-/** API取得をトリガー（Driveには保存するがダッシュボードには反映しない） */
-async function fetchFromApi() {
-    await _doApiFetch(false);
-}
-
-/** API取得→Drive保存→ダッシュボードに反映 */
-async function fetchFromApiThenLoad() {
-    await _doApiFetch(true);
-}
-
-async function _doApiFetch(andLoad) {
-    const url   = getApiGasUrl();
-    if (!url) return;
-
-    const token = getApiToken();
-    if (!token) {
-        setApiStatus('error', '❌ トークンが未入力です。上の欄に管理画面のアクセストークンを貼り付けてください。');
-        return;
-    }
-
-    setApiStatus('loading', '⏳ Admin API からデータを取得中... ブースログは全台処理のため数分かかる場合があります。');
-    setApiProgress(true, 'GASに取得リクエスト送信中...');
-    document.getElementById('btnApiFetch').disabled     = true;
-    document.getElementById('btnApiFetchLoad').disabled = true;
-
-    try {
-        const res = await fetch(url, {
-            method:   'POST',
-            headers:  { 'Content-Type': 'text/plain' },
-            body:     JSON.stringify({ action: 'fetch_api', token }),
-            redirect: 'follow'
-        });
-        const json = await res.json();
-
-        if (!json.ok) throw new Error(json.error || '不明なエラー');
-
-        const saved  = json.saved  || [];
-        const errors = json.errors || [];
-        const now    = dayjs().format('YYYY-MM-DD HH:mm:ss');
-        document.getElementById('apiLastFetched').textContent = `最終取得: ${now}`;
-
-        let msg = `✅ 取得完了（${saved.join('・')}）— ${now}`;
-        if (errors.length) msg += `<br><span style="color:#fca5a5">⚠️ 一部エラー: ${esc(errors.join(' / '))}</span>`;
-        setApiStatus('ok', msg);
-        setApiProgress(false);
-
-        // ダッシュボードに反映（Drive→ダッシュボードの既存同期を呼ぶ）
-        if (andLoad && saved.length > 0) {
-            setApiStatus('loading', '⏳ Driveからダッシュボードへ反映中...');
-            await syncFromDrive();
-            setApiStatus('ok', `✅ 取得＆反映完了（${saved.join('・')}）— ${now}`);
-        }
-
-    } catch (err) {
-        setApiStatus('error', `❌ 取得失敗: ${esc(err.message)}<br><span style="opacity:0.7;font-weight:400">GAS URL・デプロイ設定・トークンをご確認ください。</span>`);
-        setApiProgress(false);
-    } finally {
-        document.getElementById('btnApiFetch').disabled     = false;
-        document.getElementById('btnApiFetchLoad').disabled = false;
-    }
-}
-
-/** トークンをGASのスクリプトプロパティに保存（定期実行用） */
-async function saveTokenToGas() {
-    const url   = getApiGasUrl();
-    if (!url) return;
-
-    const token = getApiToken();
-    if (!token) {
-        setApiStatus('error', '❌ トークンが未入力です。上の欄にトークンを貼り付けてください。');
-        return;
-    }
-
-    setApiStatus('loading', '⏳ GASにトークンを保存中...');
-    try {
-        const res  = await fetch(url, {
-            method:   'POST',
-            headers:  { 'Content-Type': 'text/plain' },
-            body:     JSON.stringify({ action: 'save_token', token }),
-            redirect: 'follow'
-        });
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error || '不明なエラー');
-        setApiStatus('ok', '🔑 トークンをGASのスクリプトプロパティに保存しました。GASのトリガー設定で scheduledFetch を定期実行できます。');
-    } catch (err) {
-        setApiStatus('error', `❌ 保存失敗: ${esc(err.message)}`);
-    }
-}
+function getApiToken() { return (document.getElementById('loadToken')||{}).value?.trim()||''; }
+function getApiGasUrl() { return getLoadGasUrl_(); }
+function setApiStatus(t,m) {}
+function setApiProgress(s,l) {}
+async function fetchFromApi() {}
+async function fetchFromApiThenLoad() {}
+async function _doApiFetch() {}
+async function saveTokenToGas() { await saveTokenToGasFromLoad(); }
+function checkApiToken() {}
+function onApiTokenInput() {}
+function toggleTokenVisibility() {}
+async function pasteTokenFromClipboard() {}
 
 // =============================================
 // ページ読み込み時の自動同期
 // =============================================
 window.addEventListener('load', () => {
-    // データ読み込みパネルの初期化
     initLoadPanel();
 
-    // データ読み込みパネルの自動取得
-    const loadAuto = localStorage.getItem(LOAD_AUTO_KEY) === '1';
-    const loadUrl  = localStorage.getItem(LOAD_GAS_URL_KEY) || localStorage.getItem(GAS_URL_KEY) || '';
-    const loadTok  = localStorage.getItem(LOAD_TOKEN_KEY)   || '';
+    // URLが保存されていれば自動取得
+    // トークンあり → ユーザー・課金・ブースログをすべて取得
+    // トークンなし → ブースログのみ取得
+    const loadUrl = localStorage.getItem(LOAD_GAS_URL_KEY) || localStorage.getItem('gas_dashboard_url') || '';
+    const loadTok = localStorage.getItem(LOAD_TOKEN_KEY)   || '';
     if (loadUrl) {
         document.getElementById('loadGasUrl').value = loadUrl;
         document.getElementById('loadToken').value  = loadTok;
-        if (loadAuto) {
-            // 自動同期ON → ユーザー/課金/ブースログをすべて取得（トークン不足はdoLoad内でエラー表示）
-            doLoad('all');
-        } else {
-            // 自動同期OFF → ブースログだけDriveから読み込む（トークン不要）
-            doLoad('booth');
-        }
-    }
-
-    // Drive同期パネルの自動取得（loadPanelと独立して動作）
-    const auto = localStorage.getItem(GAS_AUTO_KEY) === '1';
-    const url  = localStorage.getItem(GAS_URL_KEY) || loadUrl;
-    if (auto && url) {
-        document.getElementById('gasUrl').value = url;
-        setAutoToggle(true);
-        syncFromDrive();
+        doLoad(loadTok ? 'all' : 'booth');
     }
 });
 
-// =============================================
-// ローカルCSV読み込み時にテキストを保持
-// =============================================
-document.getElementById('csvFile').addEventListener('change', e => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-        localUserCsv = ev.target.result;
-        updateFlowSteps();
-        const parsed = Papa.parse(localUserCsv.trim(), { header: true, skipEmptyLines: true });
-        processData(parsed.data);
-    };
-    reader.readAsText(file, 'UTF-8');
-});
 
-document.getElementById('salesFile').addEventListener('change', e => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-        localSalesCsv = ev.target.result;
-        updateFlowSteps();
-        const parsed = Papa.parse(localSalesCsv.trim(), { header: true, skipEmptyLines: true });
-        processSalesData(parsed.data);
-    };
-    reader.readAsText(file, 'UTF-8');
-});
-
-document.getElementById('boothFiles').addEventListener('change', async e => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    const statusEl = document.getElementById('boothStatus');
-    statusEl.classList.remove('hidden');
-    statusEl.textContent = '読み込み中…';
-
-    // ローカル lastPlayMap に追記（リセットしない＝累積可能）
-    let count = 0;
-    for (const file of files) {
-        statusEl.textContent = `読み込み中… ${count + 1}/${files.length}台`;
-        await new Promise(resolve => {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: r => { processMachineLog(r.data); count++; resolve(); }
-            });
-        });
-    }
-
-    boothMacCount += files.length;
-    const matched = Object.keys(lastPlayMap).length;
-    statusEl.textContent = `✓ ${boothMacCount}台読込済 (${matched}名突合) ※Driveへの保存はSync Panelから`;
-    applyMachineLogToAllData();
-    if (allData.length > 0) applyFilters();
-    updateFlowSteps();
-    e.target.value = ''; // 同じファイルを再選択できるようにリセット
-});
 
 // =============================================
 // チャートヘルパー
