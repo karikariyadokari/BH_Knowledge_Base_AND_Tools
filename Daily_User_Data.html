@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>デイリーユーザーデータ</title>
+<style>
+:root {
+  --bg:#f0f2f5; --card:#fff; --border:#e0e0e0;
+  --accent:#4a6cf7; --green:#34b469; --red:#e53935; --orange:#f4a024;
+  --text:#2c2c2c; --muted:#888; --header:#1e2a4a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI','Hiragino Kaku Gothic ProN',sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
+
+/* ── Header ── */
+.hdr{background:var(--header);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:10px;}
+.hdr h1{font-size:17px;font-weight:600;}
+.hdr .sub{font-size:11px;color:#aab;}
+.badge{background:var(--accent);color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:600;margin-left:auto;white-space:nowrap;}
+
+/* ── Layout ── */
+.main{padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;}
+.card-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.grid{display:grid;grid-template-columns:210px 1fr;gap:12px;align-items:start;}
+@media(max-width:700px){.grid{grid-template-columns:1fr;}}
+
+/* ── Controls ── */
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+input[type=date]{padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px;}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:6px 13px;border:none;border-radius:5px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:not(:disabled):hover{background:#3a5cd7;}
+.btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);}
+.btn-danger:not(:disabled):hover{background:#fff0f0;}
+.btn-sm{padding:4px 10px;font-size:12px;}
+
+/* ── Status ── */
+.status-row{display:flex;align-items:center;gap:6px;font-size:12px;margin-top:6px;}
+.spinner{display:none;width:13px;height:13px;border:2px solid #ddd;border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+.spinner.on{display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.ok{color:var(--green);}.err{color:var(--red);}
+#errorBox{display:none;background:#fff3f3;border:1px solid #f4c2c2;border-radius:6px;padding:8px 12px;color:var(--red);white-space:pre-wrap;font-size:12px;margin-top:8px;}
+
+/* ── Date panel ── */
+.date-panel{display:flex;flex-direction:column;gap:6px;}
+.search-input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;}
+.search-input:focus{outline:none;border-color:var(--accent);}
+.date-list{max-height:65vh;overflow-y:auto;border:1px solid var(--border);border-radius:5px;}
+.date-month{font-size:10px;font-weight:700;color:var(--muted);padding:6px 8px 3px;background:#f7f8fc;border-bottom:1px solid var(--border);position:sticky;top:0;}
+.date-item{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;cursor:pointer;border-bottom:1px solid #f5f5f5;gap:6px;}
+.date-item:hover{background:#f0f3ff;}
+.date-item.active{background:var(--accent);color:#fff;}
+.date-item.active .date-count{color:#cce;}
+.date-count{font-size:11px;color:var(--muted);white-space:nowrap;}
+.today-badge{font-size:9px;background:var(--green);color:#fff;border-radius:8px;padding:1px 5px;flex-shrink:0;}
+.date-item.active .today-badge{background:rgba(255,255,255,.3);}
+.date-empty{padding:16px;text-align:center;color:var(--muted);font-size:12px;}
+
+/* ── Data panel ── */
+.data-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.data-title{font-size:14px;font-weight:600;flex:1;}
+.meta{font-size:11px;color:var(--muted);}
+
+/* ── Summary ── */
+.summary{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.s-item{display:flex;flex-direction:column;align-items:center;}
+.s-val{font-size:22px;font-weight:700;line-height:1;}
+.s-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead{background:#f7f8fc;}
+th{padding:7px 9px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap;}
+td{padding:6px 9px;border-bottom:1px solid #f0f0f0;vertical-align:middle;}
+tbody tr:hover{background:#f9fafe;}
+.uid{font-size:10px;color:var(--muted);font-family:monospace;}
+.rank{display:inline-block;width:22px;height:22px;border-radius:50%;text-align:center;line-height:22px;font-weight:700;font-size:12px;}
+.rank-S{background:#ffd700;color:#333;}.rank-A{background:#e57373;color:#fff;}
+.rank-B{background:#64b5f6;color:#fff;}.rank-C{background:#81c784;color:#fff;}
+.rank-D{background:#bdbdbd;color:#fff;}.rank-E{background:#eee;color:#999;}
+.tag{border-radius:10px;padding:1px 8px;font-weight:600;font-size:12px;}
+.tag-pay{background:var(--red);color:#fff;}.tag-nopay{background:#eee;color:#aaa;}
+.streak-hi{color:var(--green);font-weight:700;}.streak-mid{color:var(--orange);font-weight:600;}
+
+/* ── Memo input ── */
+.memo-input{border:none;background:transparent;width:100%;min-width:100px;font:inherit;color:inherit;padding:2px 0;}
+.memo-input::placeholder{color:#ccc;}
+.memo-input:focus{outline:none;background:#f0f4ff;border-bottom:1px solid var(--accent);padding:2px 4px;}
+.memo-input.saving{opacity:.6;}
+.memo-input.saved{border-bottom:1px solid var(--green)!important;}
+.memo-input.conflict{border-bottom:1px solid var(--red)!important;}
+
+/* ── Conflict toast ── */
+.conflict-toast{display:none;position:fixed;bottom:20px;right:20px;background:#f57c00;color:#fff;padding:12px 16px;border-radius:8px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:300px;font-size:13px;line-height:1.4;}
+.conflict-toast button{background:rgba(255,255,255,.25);border:none;color:#fff;padding:3px 10px;border-radius:4px;cursor:pointer;margin-top:8px;display:block;font-size:12px;}
+
+.empty{text-align:center;padding:32px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<script>
+/* ★ GAS Web App URL */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby-Xg7MTwl3UBr8Vt_5cUWnQtjnCrrhGzEjT-NGdwxd-BcVJ7ZK0GRbHzNONKnnkh-8tw/exec';
+</script>
+
+<!-- Header -->
+<div class="hdr">
+  <div>
+    <h1>デイリーユーザーデータ</h1>
+    <div class="sub">JST 04:00 起点の24時間ウィンドウ</div>
+  </div>
+  <div class="badge" id="totalDays">読込中…</div>
+</div>
+
+<div class="main">
+
+  <!-- 抽出カード -->
+  <div class="card">
+    <div class="card-title">新規抽出 / 手動更新</div>
+    <div class="row">
+      <label>対象日:</label>
+      <input type="date" id="newDate">
+      <button class="btn btn-primary" id="btnExtract">▶ 抽出して保存</button>
+    </div>
+    <div class="status-row">
+      <div class="spinner" id="spinner"></div>
+      <span id="statusText">準備完了</span>
+    </div>
+    <div id="errorBox"></div>
+  </div>
+
+  <!-- 2カラムグリッド -->
+  <div class="grid">
+
+    <!-- 左: 日付パネル -->
+    <div class="card date-panel">
+      <div class="card-title">蓄積データ <span id="totalDays2" style="font-weight:400;text-transform:none;"></span></div>
+      <input class="search-input" id="dateSearch" type="text" placeholder="🔍 絞り込み (例: 04-25)">
+      <div class="date-list" id="dateList"></div>
+    </div>
+
+    <!-- 右: データパネル -->
+    <div class="card">
+      <div class="data-hdr">
+        <div class="data-title" id="dataTitle">← 日付を選択してください</div>
+        <span class="meta" id="extractedAt"></span>
+        <button class="btn btn-danger btn-sm" id="btnDelete">削除</button>
+      </div>
+      <div class="summary" id="summary" style="display:none;"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>時刻</th><th>ユーザー名</th><th>ID</th><th>Lv</th><th>ランク</th>
+              <th>初回ログイン</th><th>連続ログイン</th><th>課金</th>
+              <th>BCoin(Free)</th><th>BCoin(Paid)</th><th>メモ</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+</div><!-- /main -->
+
+<!-- 競合トースト -->
+<div class="conflict-toast" id="conflictToast">
+  ⚠ 他のユーザーが同じメモを編集しました。<br>最新データを再読込しました。
+  <button onclick="$('conflictToast').style.display='none'">閉じる</button>
+</div>
+
+<script>
+// ================================================================
+// 定数 / 状態
+// ================================================================
+const EXTRACT_TIMEOUT = 300000;
+const DEFAULT_TIMEOUT = 30000;
+
+let allData      = { days: [] };
+let selectedDate = '';
+const memoTimers = {}; // { uid: timeoutId }  ← デバウンス用
+
+const $ = id => document.getElementById(id);
+
+// ================================================================
+// ユーティリティ
+// ================================================================
+function debounce(fn, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+function todayLogicalDate() {
+  const jst = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  const d   = new Date(jst);
+  if (jst.getHours() < 4) d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+async function callGAS(action, params = {}, ms = DEFAULT_TIMEOUT) {
+  const url = new URL(GAS_URL);
+  url.searchParams.set('action', action);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await fetch(url.toString(), { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error(`タイムアウト (${ms/1000}秒)`);
+    throw e;
+  }
+}
+
+function x(s) {
+  return s == null ? '' : String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+// 初期化
+// ================================================================
+(async function init() {
+  $('newDate').value = todayLogicalDate();
+  await loadAll(todayLogicalDate());
+
+  // 30分おきに自動再取得
+  setInterval(async () => {
+    const cur = selectedDate;
+    await loadAll(cur, true /* silent */);
+  }, 30 * 60 * 1000);
+})();
+
+// ================================================================
+// データ取得
+// ================================================================
+async function loadAll(selectDate, silent = false) {
+  if (!silent) setBusy(true, '読み込み中…');
+  try {
+    const d = await callGAS('getAllData');
+    if (!d.ok) throw new Error(d.error);
+    allData = d;
+    const target = selectDate ||
+      (allData.days.length ? allData.days[0].targetDate : '');
+    renderDateList();
+    if (target) setSelectedDate(target, true);
+    $('totalDays').textContent  = `${d.days.length}日分 蓄積`;
+    $('totalDays2').textContent = `${d.days.length}日`;
+    if (!silent) setBusy(false, `${d.days.length}日分 読込完了`, 'ok');
+    else setBusy(false, `自動更新: ${new Date().toLocaleTimeString('ja-JP')}`, 'ok');
+  } catch (e) {
+    setBusy(false, '読込失敗', 'err');
+    if (!silent) showError('データ読込エラー', e);
+  }
+}
+
+// ================================================================
+// 日付パネル
+// ================================================================
+const debouncedFilter = debounce(() => renderDateList($('dateSearch').value), 200);
+$('dateSearch').addEventListener('input', debouncedFilter);
+
+function renderDateList(filter = '') {
+  const list    = $('dateList');
+  const today   = todayLogicalDate();
+  const q       = filter.trim();
+  const filtered = allData.days.filter(d =>
+    !q || d.targetDate.includes(q) || d.windowLabel.includes(q)
+  );
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="date-empty">該当なし</div>';
+    return;
+  }
+
+  // 月ごとにグループ化
+  const groups = {};
+  for (const d of filtered) {
+    const ym = d.targetDate.slice(0, 7);
+    (groups[ym] = groups[ym] || []).push(d);
+  }
+
+  list.innerHTML = '';
+  for (const ym of Object.keys(groups).sort().reverse()) {
+    const [y, m] = ym.split('-');
+    const mh = document.createElement('div');
+    mh.className   = 'date-month';
+    mh.textContent = `${y}年${parseInt(m)}月`;
+    list.appendChild(mh);
+
+    for (const day of groups[ym]) {
+      const item = document.createElement('div');
+      item.className = 'date-item' + (day.targetDate === selectedDate ? ' active' : '');
+      item.dataset.date = day.targetDate;
+
+      const lbl = document.createElement('span');
+      lbl.textContent = day.targetDate.slice(5); // MM-DD
+
+      const cnt = document.createElement('span');
+      cnt.className   = 'date-count';
+      cnt.textContent = day.rows.length + '件';
+
+      item.appendChild(lbl);
+      if (day.targetDate === today) {
+        const tb = document.createElement('span');
+        tb.className   = 'today-badge';
+        tb.textContent = '今日';
+        item.appendChild(tb);
+      }
+      item.appendChild(cnt);
+      item.addEventListener('click', () => setSelectedDate(day.targetDate));
+      list.appendChild(item);
+    }
+  }
+}
+
+function setSelectedDate(date, skipListRender = false) {
+  selectedDate = date;
+  if (!skipListRender) renderDateList($('dateSearch').value);
+  renderDataPanel();
+}
+
+// ================================================================
+// データパネル
+// ================================================================
+const debouncedRenderPanel = debounce(renderDataPanel, 100);
+
+function renderDataPanel() {
+  const day = allData.days.find(d => d.targetDate === selectedDate);
+  if (!day) {
+    $('dataTitle').textContent = '← 日付を選択してください';
+    $('extractedAt').textContent = '';
+    $('summary').style.display = 'none';
+    $('tbody').innerHTML = '<tr><td colspan="11" class="empty">日付を選択してください</td></tr>';
+    return;
+  }
+  $('dataTitle').textContent = `${day.targetDate}  [${day.windowLabel}]`;
+  $('extractedAt').textContent = `取得: ${new Date(day.extractedAt).toLocaleString('ja-JP')}`;
+  renderSummary(day.rows);
+  renderTable(day.rows, day.targetDate);
+}
+
+function renderSummary(rows) {
+  const pay  = rows.filter(r => r.paid === '有').length;
+  const newU = rows.filter(r => r.streak === 1).length;
+  const maxS = rows.length ? Math.max(...rows.map(r => r.streak || 0)) : 0;
+  const el   = $('summary');
+  el.style.display = rows.length ? 'flex' : 'none';
+  el.innerHTML = `
+    <div class="s-item"><div class="s-val" style="color:var(--accent)">${rows.length}</div><div class="s-lbl">プレイ人数</div></div>
+    <div class="s-item"><div class="s-val" style="color:var(--red)">${pay}</div><div class="s-lbl">課金ユーザー</div></div>
+    <div class="s-item"><div class="s-val" style="color:var(--green)">${newU}</div><div class="s-lbl">初日</div></div>
+    <div class="s-item"><div class="s-val" style="color:var(--orange)">${maxS}</div><div class="s-lbl">最長連続</div></div>`;
+}
+
+function renderTable(rows, date) {
+  const tb = $('tbody');
+  tb.innerHTML = '';
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="11" class="empty">データがありません</td></tr>';
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><b>${x(r.time)}</b></td>
+      <td>${x(r.username)}</td>
+      <td class="uid">${x(r.id)}</td>
+      <td><b>${r.level ?? ''}</b></td>
+      <td><span class="rank rank-${x(r.skillRank)}">${x(r.skillRank)}</span></td>
+      <td>${x(r.firstLogin)}</td>
+      <td class="${r.streak >= 7 ? 'streak-hi' : r.streak >= 3 ? 'streak-mid' : ''}">${r.streak != null ? r.streak + '日' : ''}</td>
+      <td><span class="tag ${r.paid === '有' ? 'tag-pay' : 'tag-nopay'}">${x(r.paid)}</span></td>
+      <td>${r.bcoinFree != null ? Number(r.bcoinFree).toLocaleString() : ''}</td>
+      <td>${r.bcoinPaid != null ? Number(r.bcoinPaid).toLocaleString() : ''}</td>
+      <td></td>`;
+
+    // メモ入力欄（最後のtd）
+    const memoTd = tr.lastElementChild;
+    const input  = document.createElement('input');
+    input.type        = 'text';
+    input.className   = 'memo-input';
+    input.value       = r.memo || '';
+    input.placeholder = 'メモを入力…';
+    input.dataset.uid  = r.id;
+    input.dataset.date = date;
+    input.dataset.mv   = r.memoVersion || 0;
+    input.addEventListener('input', () => onMemoInput(input));
+    memoTd.appendChild(input);
+
+    frag.appendChild(tr);
+  }
+  tb.appendChild(frag);
+}
+
+// ================================================================
+// メモ保存（デバウンス + 競合検出）
+// ================================================================
+function onMemoInput(input) {
+  const uid = input.dataset.uid;
+  input.classList.remove('saved', 'conflict');
+  input.classList.add('saving');
+
+  clearTimeout(memoTimers[uid]);
+  memoTimers[uid] = setTimeout(async () => {
+    const date = input.dataset.date;
+    const mv   = Number(input.dataset.mv);
+    const memo = input.value;
+    try {
+      const res = await callGAS('saveMemo', { date, uid, memo, mv });
+      input.classList.remove('saving');
+      if (res.ok) {
+        input.dataset.mv = res.memoVersion;
+        // allData 内のメモも更新
+        const day = allData.days.find(d => d.targetDate === date);
+        if (day) {
+          const row = day.rows.find(r => r.id === uid);
+          if (row) { row.memo = memo; row.memoVersion = res.memoVersion; }
+        }
+        input.classList.add('saved');
+        setTimeout(() => input.classList.remove('saved'), 2000);
+      } else if (res.conflict) {
+        input.classList.add('conflict');
+        $('conflictToast').style.display = 'block';
+        // 最新データを再取得して表示を更新
+        await loadAll(selectedDate, true);
+      } else {
+        input.classList.add('conflict');
+        showError('メモ保存エラー', { message: res.error });
+      }
+    } catch (e) {
+      input.classList.remove('saving');
+      input.classList.add('conflict');
+      showError('メモ保存エラー', e);
+    }
+    delete memoTimers[uid];
+  }, 800);
+}
+
+// ================================================================
+// ボタンイベント
+// ================================================================
+$('btnExtract').addEventListener('click', async () => {
+  const date = $('newDate').value;
+  if (!date) { alert('日付を選択してください'); return; }
+  hideError();
+  setBusy(true, `抽出中… ${date}（数分かかる場合があります）`);
+  $('btnExtract').disabled = true;
+  try {
+    const d = await callGAS('extractAndStore', { date }, EXTRACT_TIMEOUT);
+    $('btnExtract').disabled = false;
+    if (!d.ok) throw new Error(d.error);
+    allData = d;
+    renderDateList();
+    setSelectedDate(date);
+    const cnt = (d.days.find(x => x.targetDate === date) || {rows:[]}).rows.length;
+    setBusy(false, `${date} の抽出完了 (${cnt}件)`, 'ok');
+  } catch (e) {
+    $('btnExtract').disabled = false;
+    setBusy(false, '抽出失敗', 'err');
+    showError('抽出エラー', e);
+  }
+});
+
+$('btnDelete').addEventListener('click', async () => {
+  if (!selectedDate) return;
+  if (!confirm(`${selectedDate} の蓄積データを削除しますか？`)) return;
+  hideError();
+  setBusy(true, '削除中…');
+  try {
+    const d = await callGAS('deleteDay', { date: selectedDate });
+    if (!d.ok) throw new Error(d.error);
+    allData = d;
+    const next = allData.days.length ? allData.days[0].targetDate : '';
+    renderDateList();
+    setSelectedDate(next);
+    setBusy(false, '削除しました');
+  } catch (e) {
+    setBusy(false, '削除失敗', 'err');
+    showError('削除エラー', e);
+  }
+});
+
+// ================================================================
+// UI ヘルパー
+// ================================================================
+function setBusy(busy, msg, type) {
+  $('spinner').classList.toggle('on', busy);
+  const el = $('statusText');
+  el.textContent = msg || '';
+  el.className = type === 'ok' ? 'ok' : type === 'err' ? 'err' : '';
+}
+
+function showError(label, e) {
+  const msg = e && e.message ? e.message : String(e);
+  $('errorBox').style.display = 'block';
+  $('errorBox').textContent = `[${label}]\n${msg}`;
+}
+
+function hideError() { $('errorBox').style.display = 'none'; }
+</script>
+</body>
+</html>
