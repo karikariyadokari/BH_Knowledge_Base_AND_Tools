@@ -100,6 +100,17 @@ tbody tr:hover{background:#f9fafe;}
 .conflict-toast button{background:rgba(255,255,255,.25);border:none;color:#fff;padding:3px 10px;border-radius:4px;cursor:pointer;margin-top:8px;display:block;font-size:12px;}
 
 .empty{text-align:center;padding:32px;color:var(--muted);}
+
+/* ── btn-ghost ── */
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{background:#f0f0f0;}
+
+/* ── Trigger status box ── */
+.trigger-box{margin-top:8px;padding:8px 12px;border-radius:6px;font-size:12px;line-height:1.6;border:1px solid var(--border);}
+.trigger-box.ok{background:#f0fff4;border-color:#a8d8b9;}
+.trigger-box.warn{background:#fff8e1;border-color:#ffe082;}
+.trigger-box.err{background:#fff3f3;border-color:#f4c2c2;color:var(--red);}
+.trigger-setup{display:inline-block;margin-top:6px;padding:4px 10px;background:var(--accent);color:#fff;border-radius:4px;font-size:11px;font-weight:600;}
 </style>
 </head>
 <body>
@@ -127,11 +138,13 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycby-Xg7MTwl3UBr8Vt_5cUWn
       <label>対象日:</label>
       <input type="date" id="newDate">
       <button class="btn btn-primary" id="btnExtract">▶ 抽出して保存</button>
+      <button class="btn btn-ghost" id="btnCheckTrigger">⏱ トリガー確認</button>
     </div>
     <div class="status-row">
       <div class="spinner" id="spinner"></div>
       <span id="statusText">準備完了</span>
     </div>
+    <div id="triggerStatus" class="trigger-box" style="display:none;"></div>
     <div id="errorBox"></div>
   </div>
 
@@ -451,6 +464,47 @@ function onMemoInput(input) {
 // ================================================================
 // ボタンイベント
 // ================================================================
+$('btnCheckTrigger').addEventListener('click', async () => {
+  $('btnCheckTrigger').disabled = true;
+  const box = $('triggerStatus');
+  box.style.display = 'block';
+  box.className = 'trigger-box';
+  box.textContent = '確認中…';
+  try {
+    const r = await callGAS('checkTrigger');
+    if (!r.ok) throw new Error(r.error);
+
+    // 最終実行ステータスを解析
+    const st = r.lastStatus || '';
+    const isOk  = st.startsWith('OK|');
+    const isErr = st.startsWith('ERR|');
+
+    let html = '';
+    if (!r.active) {
+      box.className = 'trigger-box warn';
+      html = '⚠ トリガーが登録されていません。<br>'
+           + 'GASエディタで <b>setupHourlyTrigger</b> を実行してください。<br>'
+           + '<a class="trigger-setup" href="https://script.google.com/home" target="_blank">GASエディタを開く →</a>';
+    } else {
+      box.className = isErr ? 'trigger-box err' : 'trigger-box ok';
+      const parts = st.split('|');
+      if (isOk) {
+        html = `✅ トリガー稼働中 (${r.count}件登録)<br>`
+             + `最終実行: ${parts[1]} / ${parts[2]} / ${new Date(parts[3]).toLocaleString('ja-JP')}`;
+      } else if (isErr) {
+        html = `❌ トリガーは登録済みですが最終実行でエラー<br>${parts[1]}<br>${parts[2] ? new Date(parts[2]).toLocaleString('ja-JP') : ''}`;
+      } else {
+        html = `✅ トリガー登録済み (${r.count}件) — まだ未実行`;
+      }
+    }
+    box.innerHTML = html;
+  } catch (e) {
+    box.className = 'trigger-box err';
+    box.textContent = 'エラー: ' + (e.message || e);
+  }
+  $('btnCheckTrigger').disabled = false;
+});
+
 $('btnExtract').addEventListener('click', async () => {
   const date = $('newDate').value;
   if (!date) { alert('日付を選択してください'); return; }
