@@ -169,7 +169,7 @@
         <div id="modal-msg" style="margin-top:6px"></div>
       </div>
       <div class="modal-chat-col">
-        <div class="modal-chat-hdr">チャット<span id="modal-chat-count"></span></div>
+        <div class="modal-chat-hdr">コメント<span id="modal-chat-count"></span></div>
         <div id="modal-chat-list" class="chat-list modal-chat-scroll"></div>
       </div>
     </div>
@@ -183,7 +183,7 @@
   <button class="tab-btn" onclick="showTab('livers',this)">ライバー別</button>
   <button class="tab-btn" onclick="showTab('ranking',this)">ランキング</button>
   <button class="tab-btn" onclick="showTab('users',this)">ユーザー検索</button>
-  <button class="tab-btn" onclick="showTab('chat',this)">チャット</button>
+  <button class="tab-btn" onclick="showTab('chat',this)">コメント</button>
   <button class="tab-btn" onclick="showTab('setup',this)">設定</button>
   <div id="conn-dot" title="GAS接続状態"></div>
 </nav>
@@ -349,11 +349,11 @@
   </div>
 </div>
 
-<!-- ═══════════════ チャット ═══════════════ -->
+<!-- ═══════════════ コメント ═══════════════ -->
 <div id="tab-chat" class="tab-content">
   <div class="card">
     <div class="card-header">
-      <h2>チャットログ</h2>
+      <h2>コメントログ</h2>
       <div style="display:flex;gap:8px">
         <button class="btn btn-green" onclick="exportChatCSV()">CSV出力</button>
         <button class="btn btn-outline" onclick="loadChatLog()">更新</button>
@@ -364,7 +364,7 @@
         <option value="">配信を選んでください</option>
       </select>
       <input type="text" id="chat-filter" placeholder="ユーザー名・メッセージで絞り込み" oninput="filterChat()">
-      <button class="btn btn-outline" onclick="fetchPastChatForStream()" title="Sendbirdから全チャット履歴を取得してDriveに保存します（数分かかる場合あり）">過去チャットを取得</button>
+      <button class="btn btn-outline" onclick="fetchPastChatForStream()" title="Sendbirdから全コメント履歴を取得してDriveに保存します（数分かかる場合あり）">過去コメントを取得</button>
     </div>
     <div id="chat-stats" class="stats-row" style="margin-bottom:10px"></div>
     <div id="chat-list"><div class="empty">配信を選択してください</div></div>
@@ -406,7 +406,7 @@
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" onclick="runAction('record','manual-msg','視聴者数を記録しました（Driveのviewer_log.jsonを確認してください）')">今すぐ視聴者数を記録</button>
-      <button class="btn" onclick="runAction('record-chat','manual-msg','チャットを記録しました（Driveのchat_log.jsonを確認してください）')">今すぐチャットを記録</button>
+      <button class="btn" onclick="runAction('record-chat','manual-msg','コメントを記録しました（Driveのchat_log.jsonを確認してください）')">今すぐコメントを記録</button>
       <button class="btn btn-outline" onclick="runAction('sync-gifts','manual-msg','ギフト・シンクロをDriveに保存しました')">ギフト・シンクロを同期</button>
       <button class="btn btn-ghost" onclick="openDrive()">Driveフォルダを開く</button>
     </div>
@@ -604,7 +604,7 @@ function fetchAndRenderLiveChart() {
       '<div class="stat-box"><div class="stat-value">' + maxV + '</div><div class="stat-label">最大</div></div>' +
       '<div class="stat-box"><div class="stat-value">' + avgV + '</div><div class="stat-label">平均</div></div>' +
       '<div class="stat-box"><div class="stat-value">' + logs.length + '</div><div class="stat-label">記録数</div></div>' +
-      (chats.length ? '<div class="stat-box"><div class="stat-value">' + chats.length + '</div><div class="stat-label">チャット数</div></div>' : '');
+      (chats.length ? '<div class="stat-box"><div class="stat-value">' + chats.length + '</div><div class="stat-label">コメント数</div></div>' : '');
 
     var ds = makeDatasets(counts, chatCts, hasChat);
     var canvas = document.getElementById('live-viewer-chart');
@@ -836,7 +836,7 @@ function loadViewerChart() {
       '<div class="stat-box"><div class="stat-value">' + maxV + '</div><div class="stat-label">最大</div></div>' +
       '<div class="stat-box"><div class="stat-value">' + avgV + '</div><div class="stat-label">平均</div></div>' +
       '<div class="stat-box"><div class="stat-value">' + logs.length + '</div><div class="stat-label">記録数</div></div>' +
-      (chats.length ? '<div class="stat-box"><div class="stat-value">' + chats.length + '</div><div class="stat-label">チャット数</div></div>' : '');
+      (chats.length ? '<div class="stat-box"><div class="stat-value">' + chats.length + '</div><div class="stat-label">コメント数</div></div>' : '');
 
     if (viewerChart) { viewerChart.destroy(); viewerChart = null; }
     viewerChart = new Chart(document.getElementById('viewer-chart').getContext('2d'), {
@@ -1106,7 +1106,7 @@ function runSetupTriggers() {
   var el = document.getElementById('trigger-msg');
   el.className = 'msg'; el.textContent = '設定中...';
   gasGet('triggers', {}, 30000).then(function() {
-    el.textContent = 'トリガーを設定しました（5分ごと視聴者記録・チャット記録 / 1時間ごとギフト同期）';
+    el.textContent = 'トリガーを設定しました（5分ごと視聴者記録・コメント記録 / 1時間ごとギフト同期）';
     loadTriggerStatus(); // 設定後に状態を再確認
   }).catch(function(err) {
     el.className = 'msg error';
@@ -1253,7 +1253,7 @@ function makeDatasets(counts, chatCts, hasChat) {
     borderWidth:2, pointRadius:counts.length>80?0:3, tension:0.3, fill:true, yAxisID:'y', order:1
   }];
   if (hasChat) ds.push({
-    type:'bar', label:'チャット数', data:chatCts,
+    type:'bar', label:'コメント数', data:chatCts,
     backgroundColor:'rgba(96,165,250,0.4)', borderColor:'rgba(96,165,250,0.7)',
     borderWidth:1, yAxisID:'y2', order:2
   });
@@ -1299,7 +1299,7 @@ function renderModalChat(chats) {
   var cntEl = document.getElementById('modal-chat-count');
   if (!el) return;
   if (!chats || !chats.length) {
-    el.innerHTML = '<div class="empty" style="padding:10px;font-size:.75rem">チャットなし</div>';
+    el.innerHTML = '<div class="empty" style="padding:10px;font-size:.75rem">コメントなし</div>';
     if (cntEl) cntEl.textContent = '';
     return;
   }
@@ -1327,7 +1327,7 @@ function fetchPastChatForStream() {
   var stream = allStreams.filter(function(s){ return String(s.id) === String(sid); })[0];
   var channelUrl = stream ? (stream.channelUrl || '') : '';
   var el = document.getElementById('chat-list');
-  el.innerHTML = '<div class="loading">Sendbirdから過去チャットを取得中（最大3000件、数分かかる場合があります）...</div>';
+  el.innerHTML = '<div class="loading">Sendbirdから過去コメントを取得中（最大3000件、数分かかる場合があります）...</div>';
   gasGet('past-chat', { streamId: sid, channelUrl: channelUrl }, 120000).then(function(data) {
     if (data.error && !(data.messages && data.messages.length)) {
       el.innerHTML = '<div class="empty" style="color:#f87171">' + esc(data.error) + '</div>';
@@ -1338,14 +1338,14 @@ function fetchPastChatForStream() {
     if (data.newCount > 0) {
       el.insertAdjacentHTML('afterbegin',
         '<div style="font-size:.76rem;color:#4ade80;padding:6px 10px;background:#064e3b;border-radius:6px;margin-bottom:6px">' +
-        data.newCount + '件の新規チャットをDriveに保存しました（合計 ' + data.count + '件）</div>');
+        data.newCount + '件の新規コメントをDriveに保存しました（合計 ' + data.count + '件）</div>');
     }
   }).catch(function(err) {
     el.innerHTML = '<div class="loading" style="color:#f87171">エラー: ' + esc(err.message) + '</div>';
   });
 }
 
-// ===== チャット =====
+// ===== コメント =====
 var allChatMessages = [];
 
 function buildChatStreamSelect(streams) {
@@ -1420,7 +1420,7 @@ function renderChat(msgs) {
 
 function exportChatCSV() {
   var sid = document.getElementById('chat-stream-select').value;
-  if (!allChatMessages.length) { alert('先にチャットログを読み込んでください'); return; }
+  if (!allChatMessages.length) { alert('先にコメントログを読み込んでください'); return; }
   var rows = [['messageId','userId','userName','level','topRankViewer','message','createdAt','savedAt','streamId','channelUrl']];
   allChatMessages.forEach(function(c) {
     rows.push([c.messageId, c.userId, c.userName, c.level, c.topRankViewer,
