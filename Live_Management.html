@@ -116,6 +116,32 @@
     /* clickable stream card */
     .stream-card.clickable { cursor: pointer; transition: border-color .15s, transform .1s; }
     .stream-card.clickable:hover { border-color: #ff4d6d; transform: translateY(-2px); }
+
+    /* ── Interval buttons ── */
+    .interval-group { display:flex; align-items:center; gap:3px; }
+    .interval-label { font-size:.7rem; color:#6b7280; margin-right:2px; white-space:nowrap; }
+    .interval-btn { background:#1a1a38; border:1px solid #2a2a5a; color:#9ca3c8; padding:2px 10px; border-radius:4px; cursor:pointer; font-size:.72rem; transition:background .12s,border-color .12s; }
+    .interval-btn:hover { border-color:#ff4d6d; color:#ff4d6d; }
+    .interval-btn.active { background:#ff4d6d; border-color:#ff4d6d; color:#fff; }
+
+    /* ── Modal (wider + split layout) ── */
+    .modal-box { max-width: 1060px !important; }
+    .modal-body-grid { display:grid; grid-template-columns:1fr 260px; gap:12px; }
+    @media(max-width:800px) { .modal-body-grid { grid-template-columns:1fr; } }
+    .modal-chat-col { display:flex; flex-direction:column; min-height:0; }
+    .modal-chat-hdr { font-size:.8rem; font-weight:600; color:#ff4d6d; margin-bottom:6px; }
+    .modal-chat-hdr span { font-weight:400; color:#6b7280; font-size:.7rem; margin-left:4px; }
+    .modal-chat-scroll { flex:1; overflow-y:auto; max-height:280px; }
+
+    /* ── Chat ── */
+    .chat-list { display: flex; flex-direction: column; gap: 3px; max-height: 65vh; overflow-y: auto; padding-right: 4px; }
+    .chat-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px; background: #1a1a38; border-radius: 6px; }
+    .chat-item:hover { background: #1e1e50; }
+    .chat-name { font-size: 0.82rem; font-weight: 600; color: #c8c8f0; white-space: nowrap; }
+    .chat-level { font-size: 0.64rem; color: #4b5563; margin-left: 4px; }
+    .chat-msg { font-size: 0.84rem; color: #e0e0f0; margin-top: 2px; word-break: break-all; }
+    .chat-time { font-size: 0.64rem; color: #4b5563; margin-left: auto; white-space: nowrap; padding-top: 2px; }
+    .chat-rank-badge { display: inline-block; background: #1d4ed8; color: #fff; font-size: 0.62rem; font-weight: 700; padding: 1px 5px; border-radius: 8px; margin-left: 4px; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -126,13 +152,27 @@
     <button class="modal-close" onclick="closeLiveModal()">✕</button>
     <div class="modal-title" id="modal-stream-title">—</div>
     <div class="modal-sub" id="modal-stream-sub"></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <span id="modal-cd" style="font-size:.72rem;color:#4b5563"></span>
       <button class="btn btn-outline" style="font-size:.72rem;padding:3px 10px" onclick="manualRefreshLiveChart()">今すぐ更新</button>
+      <div class="interval-group" style="margin-left:auto">
+        <span class="interval-label">グラフ間隔:</span>
+        <button class="interval-btn" onclick="setLiveInterval(1,this)">1分</button>
+        <button class="interval-btn active" onclick="setLiveInterval(5,this)">5分</button>
+        <button class="interval-btn" onclick="setLiveInterval(10,this)">10分</button>
+      </div>
     </div>
     <div id="modal-stats" class="stats-row"></div>
-    <div class="modal-chart-wrap"><canvas id="live-viewer-chart"></canvas></div>
-    <div id="modal-msg" style="margin-top:10px"></div>
+    <div class="modal-body-grid">
+      <div>
+        <div class="modal-chart-wrap"><canvas id="live-viewer-chart"></canvas></div>
+        <div id="modal-msg" style="margin-top:6px"></div>
+      </div>
+      <div class="modal-chat-col">
+        <div class="modal-chat-hdr">チャット<span id="modal-chat-count"></span></div>
+        <div id="modal-chat-list" class="chat-list modal-chat-scroll"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -143,6 +183,7 @@
   <button class="tab-btn" onclick="showTab('livers',this)">ライバー別</button>
   <button class="tab-btn" onclick="showTab('ranking',this)">ランキング</button>
   <button class="tab-btn" onclick="showTab('users',this)">ユーザー検索</button>
+  <button class="tab-btn" onclick="showTab('chat',this)">チャット</button>
   <button class="tab-btn" onclick="showTab('setup',this)">設定</button>
   <div id="conn-dot" title="GAS接続状態"></div>
 </nav>
@@ -211,7 +252,15 @@
     </div>
   </div>
   <div class="card">
-    <div class="card-header"><h2>同時接続グラフ</h2></div>
+    <div class="card-header">
+      <h2>同時接続グラフ</h2>
+      <div class="interval-group">
+        <span class="interval-label">グラフ間隔:</span>
+        <button class="interval-btn hist-interval-btn" onclick="setHistInterval(1,this)">1分</button>
+        <button class="interval-btn hist-interval-btn active" onclick="setHistInterval(5,this)">5分</button>
+        <button class="interval-btn hist-interval-btn" onclick="setHistInterval(10,this)">10分</button>
+      </div>
+    </div>
     <div class="controls">
       <select id="stream-select" onchange="loadViewerChart()">
         <option value="">配信を選んでください</option>
@@ -300,6 +349,28 @@
   </div>
 </div>
 
+<!-- ═══════════════ チャット ═══════════════ -->
+<div id="tab-chat" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <h2>チャットログ</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-green" onclick="exportChatCSV()">CSV出力</button>
+        <button class="btn btn-outline" onclick="loadChatLog()">更新</button>
+      </div>
+    </div>
+    <div class="controls">
+      <select id="chat-stream-select" onchange="loadChatLog()">
+        <option value="">配信を選んでください</option>
+      </select>
+      <input type="text" id="chat-filter" placeholder="ユーザー名・メッセージで絞り込み" oninput="filterChat()">
+      <button class="btn btn-outline" onclick="fetchPastChatForStream()" title="Sendbirdから全チャット履歴を取得してDriveに保存します（数分かかる場合あり）">過去チャットを取得</button>
+    </div>
+    <div id="chat-stats" class="stats-row" style="margin-bottom:10px"></div>
+    <div id="chat-list"><div class="empty">配信を選択してください</div></div>
+  </div>
+</div>
+
 <!-- ═══════════════ 設定 ═══════════════ -->
 <div id="tab-setup" class="tab-content">
   <div class="card">
@@ -335,6 +406,7 @@
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" onclick="runAction('record','manual-msg','視聴者数を記録しました（Driveのviewer_log.jsonを確認してください）')">今すぐ視聴者数を記録</button>
+      <button class="btn" onclick="runAction('record-chat','manual-msg','チャットを記録しました（Driveのchat_log.jsonを確認してください）')">今すぐチャットを記録</button>
       <button class="btn btn-outline" onclick="runAction('sync-gifts','manual-msg','ギフト・シンクロをDriveに保存しました')">ギフト・シンクロを同期</button>
       <button class="btn btn-ghost" onclick="openDrive()">Driveフォルダを開く</button>
     </div>
@@ -384,7 +456,7 @@ var viewerChart        = null;
 var liveViewerChart    = null;
 var currentLiveRecords = [];
 var liveModalTimer     = null;
-var liveModalCd        = 300;
+var liveModalCd        = 60;
 var liveModalStreamId  = null;
 var countdownTimer = null;
 var countdownSec   = 300;
@@ -392,6 +464,9 @@ var prevLiveIds    = [];
 var allStreams      = [];
 var allLivers      = [];
 var notifEnabled   = false;
+var liveInterval   = 5;
+var histInterval   = 5;
+var modalChatMsgs  = [];
 
 // ===== Connection =====
 function setConn(s) {
@@ -410,6 +485,7 @@ function showTab(name, btn) {
   if (name === 'history'  && allStreams.length === 0) loadHistory();
   if (name === 'livers'   && allLivers.length  === 0) loadLivers();
   if (name === 'ranking')  { renderStreamerRanking(); loadGifterRanking(); }
+  if (name === 'chat')     { buildChatStreamSelect(allStreams); if (allStreams.length === 0) loadHistory(); }
 }
 
 // ===== Ranking tab switch =====
@@ -432,7 +508,7 @@ function loadLive() {
     checkNewStreams(records);
     setConn('ok');
     if (btn) { btn.disabled=false; btn.textContent='更新'; }
-    countdownSec = 300;
+    countdownSec = records.length > 0 ? 60 : 300;
   }).catch(function(err) {
     document.getElementById('live-streams').innerHTML =
       '<div class="loading" style="color:#f87171">エラー: '+esc(err.message)+'</div>';
@@ -494,83 +570,72 @@ function openLiveViewerChart(s) {
 }
 
 function fetchAndRenderLiveChart() {
-  var statsEl  = document.getElementById('modal-stats');
-  var msgEl    = document.getElementById('modal-msg');
-  var canvas   = document.getElementById('live-viewer-chart');
+  var statsEl = document.getElementById('modal-stats');
+  var msgEl   = document.getElementById('modal-msg');
+  var sid     = liveModalStreamId;
 
-  gasGet('viewers', { streamId: liveModalStreamId }).then(function(logs) {
+  Promise.all([
+    gasGet('viewers', { streamId: sid }),
+    gasGet('chat',    { streamId: sid })
+  ]).then(function(res) {
+    var logs  = res[0] || [];
+    var chats = res[1] || [];
+    modalChatMsgs = chats;
     msgEl.innerHTML = '';
-    if (!logs || !logs.length) {
+
+    renderModalChat(chats);
+
+    if (!logs.length) {
       statsEl.innerHTML = '';
-      msgEl.innerHTML =
-        '<div class="empty" style="color:#6b7280">視聴者ログがまだありません。<br>' +
-        '5分ごとのトリガーが動作すると記録が蓄積されます。</div>';
+      msgEl.innerHTML = '<div class="empty" style="color:#6b7280">視聴者ログがまだありません。<br>1分ごとのトリガーが動作すると記録が蓄積されます。</div>';
       return;
     }
 
-    var counts = logs.map(function(l) { return Number(l.currentViewers) || 0; });
-    var maxV   = Math.max.apply(null, counts);
-    var avgV   = Math.round(counts.reduce(function(a, b) { return a + b; }, 0) / counts.length);
-    var labels = logs.map(function(l) { return String(l.timestamp || '').substring(5, 16); });
+    var agg     = aggregateLogs(logs, liveInterval);
+    var counts  = agg.map(function(l) { return Number(l.currentViewers) || 0; });
+    var chatCts = chatPerBucket(chats, agg, liveInterval);
+    var labels  = agg.map(function(l) { return String(l.timestamp || '').substring(5, 16); });
+    var maxV    = Math.max.apply(null, counts);
+    var avgV    = Math.round(counts.reduce(function(a,b){return a+b;},0) / counts.length);
+    var hasChat = chatCts.some(function(v){return v > 0;});
 
     statsEl.innerHTML =
-      '<div class="stat-box"><div class="stat-value">' + counts[counts.length - 1] + '</div><div class="stat-label">最新</div></div>' +
+      '<div class="stat-box"><div class="stat-value">' + counts[counts.length-1] + '</div><div class="stat-label">最新</div></div>' +
       '<div class="stat-box"><div class="stat-value">' + maxV + '</div><div class="stat-label">最大</div></div>' +
       '<div class="stat-box"><div class="stat-value">' + avgV + '</div><div class="stat-label">平均</div></div>' +
-      '<div class="stat-box"><div class="stat-value">' + logs.length + '</div><div class="stat-label">記録数</div></div>';
+      '<div class="stat-box"><div class="stat-value">' + logs.length + '</div><div class="stat-label">記録数</div></div>' +
+      (chats.length ? '<div class="stat-box"><div class="stat-value">' + chats.length + '</div><div class="stat-label">チャット数</div></div>' : '');
 
+    var ds = makeDatasets(counts, chatCts, hasChat);
+    var canvas = document.getElementById('live-viewer-chart');
     if (liveViewerChart) {
-      // チャートを再生成せずデータだけ差し替え
       liveViewerChart.data.labels = labels;
-      liveViewerChart.data.datasets[0].data = counts;
-      liveViewerChart.data.datasets[0].pointRadius = counts.length > 60 ? 0 : 3;
+      liveViewerChart.data.datasets = ds;
+      if (!liveViewerChart.options.scales.y2) liveViewerChart.options.scales.y2 = makeY2Scale();
+      liveViewerChart.options.scales.y2.display = hasChat;
       liveViewerChart.update('active');
     } else {
       liveViewerChart = new Chart(canvas.getContext('2d'), {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: '同時接続',
-            data: counts,
-            borderColor: '#ff4d6d',
-            backgroundColor: 'rgba(255,77,109,0.12)',
-            borderWidth: 2,
-            pointRadius: counts.length > 60 ? 0 : 3,
-            tension: 0.3,
-            fill: true
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          animation: { duration: 400 },
-          interaction: { mode: 'index', intersect: false },
-          scales: {
-            x: { ticks: { color: '#6b7280', maxRotation: 45, maxTicksLimit: 12 }, grid: { color: '#1e1e4a' } },
-            y: { ticks: { color: '#6b7280' }, grid: { color: '#1e1e4a' }, beginAtZero: true }
-          },
-          plugins: {
-            legend: { labels: { color: '#c8c8f0' } },
-            tooltip: { backgroundColor: '#12122a', borderColor: '#2a2a5a', borderWidth: 1, titleColor: '#ff4d6d', bodyColor: '#e0e0f0' }
-          }
-        }
+        type: 'bar',
+        data: { labels: labels, datasets: ds },
+        options: makeChartOpts(hasChat)
       });
     }
   }).catch(function(err) {
-    statsEl.innerHTML = '';
-    msgEl.innerHTML = '<div class="empty" style="color:#f87171">エラー: ' + esc(err.message) + '</div>';
+    document.getElementById('modal-stats').innerHTML = '';
+    document.getElementById('modal-msg').innerHTML = '<div class="empty" style="color:#f87171">エラー: ' + esc(err.message) + '</div>';
   });
 }
 
 function startLiveModalCountdown() {
   stopLiveModalCountdown();
-  liveModalCd = 300;
+  liveModalCd = 60;
   updateLiveCdDisplay();
   liveModalTimer = setInterval(function() {
     liveModalCd--;
     updateLiveCdDisplay();
     if (liveModalCd <= 0) {
-      liveModalCd = 300;
+      liveModalCd = 60;
       fetchAndRenderLiveChart();
     }
   }, 1000);
@@ -588,7 +653,7 @@ function updateLiveCdDisplay() {
 }
 
 function manualRefreshLiveChart() {
-  liveModalCd = 300;
+  liveModalCd = 60;
   fetchAndRenderLiveChart();
   startLiveModalCountdown();
 }
@@ -599,6 +664,8 @@ function closeLiveModal(event) {
   document.body.style.overflow = '';
   stopLiveModalCountdown();
   if (liveViewerChart) { liveViewerChart.destroy(); liveViewerChart = null; }
+  modalChatMsgs = [];
+  liveModalStreamId = null;
 }
 
 // ===== 予定配信 =====
@@ -675,6 +742,7 @@ function loadHistory() {
     setConn('ok');
     filterHistory();
     buildStreamSelect(allStreams);
+    buildChatStreamSelect(allStreams);
   }).catch(function(err) {
     document.getElementById('history-tbody').innerHTML=
       '<tr><td colspan="8" style="color:#f87171;text-align:center">エラー: '+esc(err.message)+'</td></tr>';
@@ -737,40 +805,48 @@ function selectStream(id) {
 }
 
 function loadViewerChart() {
-  var sid=document.getElementById('stream-select').value;
-  var se=document.getElementById('stream-stats');
-  if(!sid){se.innerHTML='';return;}
-  se.innerHTML='<div class="loading">読み込み中...</div>';
-  gasGet('viewers',{streamId:sid}).then(function(logs) {
-    if(!logs||!logs.length){
-      se.innerHTML='<div class="empty">視聴者ログなし（5分ごとのトリガー記録が必要です）</div>';
-      if(viewerChart){viewerChart.destroy();viewerChart=null;}
+  var sid = document.getElementById('stream-select').value;
+  var se  = document.getElementById('stream-stats');
+  if (!sid) { se.innerHTML = ''; return; }
+  se.innerHTML = '<div class="loading">読み込み中...</div>';
+
+  Promise.all([
+    gasGet('viewers', { streamId: sid }),
+    gasGet('chat',    { streamId: sid })
+  ]).then(function(res) {
+    var logs  = res[0] || [];
+    var chats = res[1] || [];
+
+    if (!logs.length) {
+      se.innerHTML = '<div class="empty">視聴者ログなし（1分ごとのトリガー記録が必要です）</div>';
+      if (viewerChart) { viewerChart.destroy(); viewerChart = null; }
       return;
     }
-    var counts=logs.map(function(l){return Number(l.currentViewers)||0;});
-    var maxV=Math.max.apply(null,counts);
-    var avgV=Math.round(counts.reduce(function(a,b){return a+b;},0)/counts.length);
-    se.innerHTML=
-      '<div class="stat-box"><div class="stat-value">'+counts[counts.length-1]+'</div><div class="stat-label">最新</div></div>'+
-      '<div class="stat-box"><div class="stat-value">'+maxV+'</div><div class="stat-label">最大</div></div>'+
-      '<div class="stat-box"><div class="stat-value">'+avgV+'</div><div class="stat-label">平均</div></div>'+
-      '<div class="stat-box"><div class="stat-value">'+logs.length+'</div><div class="stat-label">記録数</div></div>';
-    if(viewerChart) viewerChart.destroy();
-    viewerChart=new Chart(document.getElementById('viewer-chart').getContext('2d'),{
-      type:'line',
-      data:{labels:logs.map(function(l){return String(l.timestamp||'').substring(5,16);}),
-            datasets:[{label:'同時接続',data:counts,borderColor:'#ff4d6d',
-              backgroundColor:'rgba(255,77,109,0.1)',borderWidth:2,
-              pointRadius:counts.length>60?0:3,tension:0.3,fill:true}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        interaction:{mode:'index',intersect:false},
-        scales:{x:{ticks:{color:'#6b7280',maxRotation:45,maxTicksLimit:20},grid:{color:'#1e1e4a'}},
-                y:{ticks:{color:'#6b7280'},grid:{color:'#1e1e4a'},beginAtZero:true}},
-        plugins:{legend:{labels:{color:'#c8c8f0'}},
-          tooltip:{backgroundColor:'#12122a',borderColor:'#2a2a5a',borderWidth:1,
-                   titleColor:'#ff4d6d',bodyColor:'#e0e0f0'}}}
+
+    var agg     = aggregateLogs(logs, histInterval);
+    var counts  = agg.map(function(l) { return Number(l.currentViewers) || 0; });
+    var chatCts = chatPerBucket(chats, agg, histInterval);
+    var labels  = agg.map(function(l) { return String(l.timestamp || '').substring(5, 16); });
+    var maxV    = Math.max.apply(null, counts);
+    var avgV    = Math.round(counts.reduce(function(a,b){return a+b;},0) / counts.length);
+    var hasChat = chatCts.some(function(v){return v>0;});
+
+    se.innerHTML =
+      '<div class="stat-box"><div class="stat-value">' + counts[counts.length-1] + '</div><div class="stat-label">最新</div></div>' +
+      '<div class="stat-box"><div class="stat-value">' + maxV + '</div><div class="stat-label">最大</div></div>' +
+      '<div class="stat-box"><div class="stat-value">' + avgV + '</div><div class="stat-label">平均</div></div>' +
+      '<div class="stat-box"><div class="stat-value">' + logs.length + '</div><div class="stat-label">記録数</div></div>' +
+      (chats.length ? '<div class="stat-box"><div class="stat-value">' + chats.length + '</div><div class="stat-label">チャット数</div></div>' : '');
+
+    if (viewerChart) { viewerChart.destroy(); viewerChart = null; }
+    viewerChart = new Chart(document.getElementById('viewer-chart').getContext('2d'), {
+      type: 'bar',
+      data: { labels: labels, datasets: makeDatasets(counts, chatCts, hasChat) },
+      options: makeChartOpts(hasChat)
     });
-  }).catch(function(err){se.innerHTML='<div class="empty" style="color:#f87171">エラー: '+esc(err.message)+'</div>';});
+  }).catch(function(err) {
+    se.innerHTML = '<div class="empty" style="color:#f87171">エラー: ' + esc(err.message) + '</div>';
+  });
 }
 
 // CSV 出力
@@ -1030,7 +1106,7 @@ function runSetupTriggers() {
   var el = document.getElementById('trigger-msg');
   el.className = 'msg'; el.textContent = '設定中...';
   gasGet('triggers', {}, 30000).then(function() {
-    el.textContent = 'トリガーを設定しました（5分ごと視聴者記録 / 1時間ごとギフト同期）';
+    el.textContent = 'トリガーを設定しました（5分ごと視聴者記録・チャット記録 / 1時間ごとギフト同期）';
     loadTriggerStatus(); // 設定後に状態を再確認
   }).catch(function(err) {
     el.className = 'msg error';
@@ -1137,6 +1213,222 @@ function unixToJST(u) {
 // Object.values polyfill
 if (!Object.values) Object.values=function(o){return Object.keys(o).map(function(k){return o[k];});};
 
+// ===== グラフヘルパー =====
+function parseJSTtoMs(ts) {
+  if (!ts) return 0;
+  try { return new Date(ts.replace(' ','T') + '+09:00').getTime(); } catch(e) { return 0; }
+}
+
+function aggregateLogs(logs, intervalMin) {
+  if (!logs || !logs.length) return [];
+  if (intervalMin <= 1) return logs.slice();
+  var ms = intervalMin * 60000;
+  var buckets = {};
+  logs.forEach(function(l) {
+    var t = parseJSTtoMs(l.timestamp);
+    if (!t) return;
+    var k = Math.floor(t / ms) * ms;
+    if (!buckets[k]) buckets[k] = { ts: l.timestamp, views: [] };
+    buckets[k].views.push(Number(l.currentViewers) || 0);
+  });
+  return Object.keys(buckets).sort(function(a,b){return +a - +b;}).map(function(k) {
+    var b = buckets[k];
+    return { timestamp: b.ts, currentViewers: Math.round(b.views.reduce(function(a,v){return a+v;},0)/b.views.length) };
+  });
+}
+
+function chatPerBucket(chats, aggLogs, intervalMin) {
+  var intMs = Math.max(intervalMin, 1) * 60000;
+  return aggLogs.map(function(l) {
+    var s = parseJSTtoMs(l.timestamp);
+    if (!s) return 0;
+    return chats.filter(function(c) { return c.createdAt >= s && c.createdAt < s + intMs; }).length;
+  });
+}
+
+function makeDatasets(counts, chatCts, hasChat) {
+  var ds = [{
+    type:'line', label:'同時接続', data:counts,
+    borderColor:'#ff4d6d', backgroundColor:'rgba(255,77,109,0.12)',
+    borderWidth:2, pointRadius:counts.length>80?0:3, tension:0.3, fill:true, yAxisID:'y', order:1
+  }];
+  if (hasChat) ds.push({
+    type:'bar', label:'チャット数', data:chatCts,
+    backgroundColor:'rgba(96,165,250,0.4)', borderColor:'rgba(96,165,250,0.7)',
+    borderWidth:1, yAxisID:'y2', order:2
+  });
+  return ds;
+}
+
+function makeY2Scale() {
+  return { position:'right', ticks:{color:'#6b7280'}, grid:{drawOnChartArea:false,color:'#1e1e4a'}, beginAtZero:true };
+}
+
+function makeChartOpts(hasChat) {
+  return {
+    responsive:true, maintainAspectRatio:false, animation:{duration:400},
+    interaction:{mode:'index',intersect:false},
+    scales:{
+      x:{ticks:{color:'#6b7280',maxRotation:45,maxTicksLimit:16},grid:{color:'#1e1e4a'}},
+      y:{ticks:{color:'#6b7280'},grid:{color:'#1e1e4a'},beginAtZero:true},
+      y2: hasChat ? makeY2Scale() : {display:false}
+    },
+    plugins:{
+      legend:{labels:{color:'#c8c8f0'}},
+      tooltip:{backgroundColor:'#12122a',borderColor:'#2a2a5a',borderWidth:1,titleColor:'#ff4d6d',bodyColor:'#e0e0f0'}
+    }
+  };
+}
+
+function setLiveInterval(min, btn) {
+  liveInterval = min;
+  document.querySelectorAll('#live-modal .interval-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  if (liveModalStreamId) fetchAndRenderLiveChart();
+}
+
+function setHistInterval(min, btn) {
+  histInterval = min;
+  document.querySelectorAll('.hist-interval-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  if (document.getElementById('stream-select').value) loadViewerChart();
+}
+
+function renderModalChat(chats) {
+  var el    = document.getElementById('modal-chat-list');
+  var cntEl = document.getElementById('modal-chat-count');
+  if (!el) return;
+  if (!chats || !chats.length) {
+    el.innerHTML = '<div class="empty" style="padding:10px;font-size:.75rem">チャットなし</div>';
+    if (cntEl) cntEl.textContent = '';
+    return;
+  }
+  if (cntEl) cntEl.textContent = '(' + chats.length + '件)';
+  var show = chats.slice(-60);
+  el.innerHTML = show.map(function(c) {
+    var ts = c.createdAt ? new Date(c.createdAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+                         : (c.sentAt || c.savedAt || '').slice(11,19);
+    var rank = (c.topRankViewer > 0) ? '<span class="chat-rank-badge">TOP' + c.topRankViewer + '</span>' : '';
+    return '<div class="chat-item" style="padding:4px 8px">' +
+      '<div style="min-width:0;flex:1">' +
+        '<span class="chat-name" style="font-size:.76rem">' + esc(c.userName || '') + '</span>' + rank +
+        '<span class="chat-level">' + esc(c.level || '') + '</span>' +
+        '<div class="chat-msg" style="font-size:.78rem">' + esc(c.message || '') + '</div>' +
+      '</div>' +
+      '<span class="chat-time">' + esc(ts) + '</span>' +
+    '</div>';
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function fetchPastChatForStream() {
+  var sid = document.getElementById('chat-stream-select').value;
+  if (!sid) { alert('配信を選択してください'); return; }
+  var stream = allStreams.filter(function(s){ return String(s.id) === String(sid); })[0];
+  var channelUrl = stream ? (stream.channelUrl || '') : '';
+  var el = document.getElementById('chat-list');
+  el.innerHTML = '<div class="loading">Sendbirdから過去チャットを取得中（最大3000件、数分かかる場合があります）...</div>';
+  gasGet('past-chat', { streamId: sid, channelUrl: channelUrl }, 120000).then(function(data) {
+    if (data.error && !(data.messages && data.messages.length)) {
+      el.innerHTML = '<div class="empty" style="color:#f87171">' + esc(data.error) + '</div>';
+      return;
+    }
+    allChatMessages = data.messages || [];
+    filterChat();
+    if (data.newCount > 0) {
+      el.insertAdjacentHTML('afterbegin',
+        '<div style="font-size:.76rem;color:#4ade80;padding:6px 10px;background:#064e3b;border-radius:6px;margin-bottom:6px">' +
+        data.newCount + '件の新規チャットをDriveに保存しました（合計 ' + data.count + '件）</div>');
+    }
+  }).catch(function(err) {
+    el.innerHTML = '<div class="loading" style="color:#f87171">エラー: ' + esc(err.message) + '</div>';
+  });
+}
+
+// ===== チャット =====
+var allChatMessages = [];
+
+function buildChatStreamSelect(streams) {
+  var sel = document.getElementById('chat-stream-select');
+  var prev = sel.value;
+  sel.innerHTML = '<option value="">配信を選んでください (' + streams.length + '件)</option>';
+  streams.forEach(function(s) {
+    var o = document.createElement('option');
+    o.value = s.id;
+    o.dataset.channelUrl = s.channelUrl || '';
+    o.textContent = (s.status === 'STREAMING' ? '[LIVE] ' : '') + s.title + ' — ' + (s.streamerName || s.streamer_name || '');
+    sel.appendChild(o);
+  });
+  if (prev) sel.value = prev;
+}
+
+function loadChatLog() {
+  var sid = document.getElementById('chat-stream-select').value;
+  var el  = document.getElementById('chat-list');
+  if (!sid) { el.innerHTML = '<div class="empty">配信を選択してください</div>'; return; }
+  el.innerHTML = '<div class="loading">読み込み中...</div>';
+  gasGet('chat', { streamId: sid }, 30000).then(function(data) {
+    allChatMessages = Array.isArray(data) ? data : [];
+    filterChat();
+  }).catch(function(err) {
+    el.innerHTML = '<div class="loading" style="color:#f87171">エラー: ' + esc(err.message) + '</div>';
+  });
+}
+
+function filterChat() {
+  var q = (document.getElementById('chat-filter').value || '').toLowerCase();
+  var filtered = allChatMessages.filter(function(c) {
+    if (!q) return true;
+    return (c.userName || '').toLowerCase().indexOf(q) !== -1 ||
+           (c.message  || '').toLowerCase().indexOf(q) !== -1;
+  });
+  renderChat(filtered);
+}
+
+function renderChat(msgs) {
+  var statsEl = document.getElementById('chat-stats');
+  var listEl  = document.getElementById('chat-list');
+
+  if (!msgs || !msgs.length) {
+    statsEl.innerHTML = '';
+    listEl.innerHTML  = '<div class="empty">メッセージなし（トリガーが記録した後に表示されます）</div>';
+    return;
+  }
+
+  var users = {};
+  msgs.forEach(function(c) { if (c.userId) users[c.userId] = true; });
+  statsEl.innerHTML =
+    '<div class="stat-box"><div class="stat-value">' + msgs.length + '</div><div class="stat-label">メッセージ数</div></div>' +
+    '<div class="stat-box"><div class="stat-value">' + Object.keys(users).length + '</div><div class="stat-label">ユニークユーザー</div></div>';
+
+  listEl.innerHTML = msgs.map(function(c) {
+    var ts = c.createdAt ? new Date(c.createdAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+                         : (c.sentAt || c.savedAt || '').slice(11,19);
+    var rank = (c.topRankViewer > 0)
+      ? '<span class="chat-rank-badge">TOP' + c.topRankViewer + '</span>' : '';
+    return '<div class="chat-item">' +
+      '<div style="min-width:0;flex:1">' +
+        '<span class="chat-name">' + esc(c.userName || '(不明)') + '</span>' +
+        rank +
+        '<span class="chat-level">' + esc(c.level || '') + '</span>' +
+        '<div class="chat-msg">' + esc(c.message || '') + '</div>' +
+      '</div>' +
+      '<span class="chat-time">' + esc(ts) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function exportChatCSV() {
+  var sid = document.getElementById('chat-stream-select').value;
+  if (!allChatMessages.length) { alert('先にチャットログを読み込んでください'); return; }
+  var rows = [['messageId','userId','userName','level','topRankViewer','message','createdAt','savedAt','streamId','channelUrl']];
+  allChatMessages.forEach(function(c) {
+    rows.push([c.messageId, c.userId, c.userName, c.level, c.topRankViewer,
+               c.message, c.createdAt, c.savedAt, c.streamId, c.channelUrl]);
+  });
+  downloadCSV(rows, 'chat_' + (sid || 'all') + '_' + dateStr() + '.csv');
+}
+
 // ===== キーボード =====
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape') { closeLiveModal(); return; }
@@ -1145,6 +1437,7 @@ document.addEventListener('keydown',function(e){
   if(id==='user-search') loadUser();
   if(id==='history-filter') filterHistory();
   if(id==='liver-filter') filterLivers();
+  if(id==='chat-filter') filterChat();
 });
 
 // ===== 通知の初期状態チェック =====
