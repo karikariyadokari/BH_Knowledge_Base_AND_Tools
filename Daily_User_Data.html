@@ -105,6 +105,25 @@ tbody tr:hover{background:#f9fafe;}
 .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
 .btn-ghost:hover{background:#f0f0f0;}
 
+/* ── Billing ── */
+.billing-sum{display:flex;gap:20px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:14px;}
+.bill-grid{display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:start;}
+@media(max-width:700px){.bill-grid{grid-template-columns:1fr;}}
+.bill-section-title{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;}
+.bill-month-tbl{width:100%;border-collapse:collapse;}
+.bill-month-tbl th,.bill-month-tbl td{padding:6px 8px;border-bottom:1px solid #f0f0f0;font-size:12px;}
+.bill-month-tbl thead{background:#f7f8fc;}
+.bill-month-tbl th{font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);}
+.bill-month-tbl td:not(:first-child){text-align:right;}
+.bill-month-tbl th:not(:first-child){text-align:right;}
+.bill-cur-month{background:#fff8f0;}
+.bill-amount{color:var(--red);font-weight:700;}
+.bill-detail-tbl{width:100%;border-collapse:collapse;}
+.bill-detail-tbl th,.bill-detail-tbl td{padding:5px 8px;border-bottom:1px solid #f0f0f0;font-size:12px;}
+.bill-detail-tbl thead{background:#f7f8fc;}
+.bill-detail-tbl th{font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);}
+.bill-detail-wrap{max-height:340px;overflow-y:auto;}
+
 /* ── Trigger status box ── */
 .trigger-box{margin-top:8px;padding:8px 12px;border-radius:6px;font-size:12px;line-height:1.6;border:1px solid var(--border);}
 .trigger-box.ok{background:#f0fff4;border-color:#a8d8b9;}
@@ -181,6 +200,53 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycby-Xg7MTwl3UBr8Vt_5cUWn
     </div>
 
   </div><!-- /grid -->
+
+  <!-- 課金記録 -->
+  <div class="card">
+    <div class="card-title">課金記録</div>
+    <div class="row" style="margin-bottom:8px;">
+      <button class="btn btn-primary btn-sm" id="btnLoadBilling">読み込む</button>
+      <button class="btn btn-ghost btn-sm" id="btnRefreshBilling" style="display:none;">更新</button>
+      <div class="spinner" id="billingSpinner"></div>
+      <span id="billingStatus" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+
+    <div id="billingContent" style="display:none;">
+      <!-- サマリー -->
+      <div class="billing-sum" id="billingSummary"></div>
+
+      <div class="bill-grid">
+        <!-- 月別集計 -->
+        <div>
+          <div class="bill-section-title">月別集計</div>
+          <table class="bill-month-tbl">
+            <thead><tr><th>年月</th><th>件数</th><th>金額</th></tr></thead>
+            <tbody id="billingMonthBody"></tbody>
+          </table>
+        </div>
+
+        <!-- 明細 -->
+        <div>
+          <div class="bill-section-title">明細</div>
+          <input class="search-input" id="billingSearch" type="text"
+            placeholder="🔍 ユーザー名・パック名で絞り込み"
+            style="margin-bottom:8px;">
+          <div class="bill-detail-wrap">
+            <table class="bill-detail-tbl">
+              <thead>
+                <tr>
+                  <th>日時</th><th>ユーザー名</th><th>パック</th>
+                  <th style="text-align:right;">金額</th><th>決済方法</th><th>OS</th>
+                </tr>
+              </thead>
+              <tbody id="billingDetailBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /main -->
 
 <!-- 競合トースト -->
@@ -567,6 +633,116 @@ function showError(label, e) {
 }
 
 function hideError() { $('errorBox').style.display = 'none'; }
+
+// ================================================================
+// 課金記録
+// ================================================================
+let billingRecords = [];
+
+function jpy(v) { return '¥' + Number(v).toLocaleString('ja-JP'); }
+
+$('btnLoadBilling').addEventListener('click', loadBilling);
+$('btnRefreshBilling').addEventListener('click', loadBilling);
+
+const debouncedBillingSearch = debounce(() => renderBillingDetail($('billingSearch').value), 200);
+$('billingSearch').addEventListener('input', debouncedBillingSearch);
+
+async function loadBilling() {
+  $('billingSpinner').classList.add('on');
+  $('billingStatus').textContent = '読み込み中…（全ページ取得のため数秒かかります）';
+  $('billingStatus').className = '';
+  $('btnLoadBilling').disabled = true;
+  $('btnRefreshBilling').disabled = true;
+  try {
+    const d = await callGAS('getBillingHistory', {}, 300000);
+    if (!d.ok) throw new Error(d.error);
+    billingRecords = d.records || [];
+    renderBillingSummary(d.total, d.byMonth, billingRecords.length);
+    renderBillingMonthly(d.byMonth);
+    renderBillingDetail($('billingSearch').value);
+    $('billingContent').style.display = 'block';
+    $('btnLoadBilling').style.display = 'none';
+    $('btnRefreshBilling').style.display = '';
+    $('billingStatus').textContent = `読込完了 (${billingRecords.length}件)`;
+    $('billingStatus').className = 'ok';
+  } catch (e) {
+    $('billingStatus').textContent = 'エラー: ' + (e.message || e);
+    $('billingStatus').className = 'err';
+  }
+  $('billingSpinner').classList.remove('on');
+  $('btnLoadBilling').disabled = false;
+  $('btnRefreshBilling').disabled = false;
+}
+
+function renderBillingSummary(total, byMonth, count) {
+  const nowYM = (() => {
+    const jst = new Date(Date.now() + 9 * 3600 * 1000);
+    return jst.getUTCFullYear() + '-' + String(jst.getUTCMonth() + 1).padStart(2, '0');
+  })();
+  const prevYM = (() => {
+    const d = new Date(Date.now() + 9 * 3600 * 1000);
+    d.setUTCMonth(d.getUTCMonth() - 1);
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+  })();
+  const curMonth  = (byMonth[nowYM]  || { total: 0, count: 0 });
+  const prevMonth = (byMonth[prevYM] || { total: 0, count: 0 });
+  $('billingSummary').innerHTML = `
+    <div class="s-item"><div class="s-val bill-amount">${jpy(total)}</div><div class="s-lbl">TOTAL</div></div>
+    <div class="s-item"><div class="s-val" style="color:var(--orange)">${jpy(curMonth.total)}</div><div class="s-lbl">今月 (${nowYM})</div></div>
+    <div class="s-item"><div class="s-val" style="color:var(--muted)">${jpy(prevMonth.total)}</div><div class="s-lbl">先月 (${prevYM})</div></div>
+    <div class="s-item"><div class="s-val" style="color:var(--accent)">${count}</div><div class="s-lbl">総件数</div></div>`;
+}
+
+function renderBillingMonthly(byMonth) {
+  const nowYM = (() => {
+    const jst = new Date(Date.now() + 9 * 3600 * 1000);
+    return jst.getUTCFullYear() + '-' + String(jst.getUTCMonth() + 1).padStart(2, '0');
+  })();
+  const tbody = $('billingMonthBody');
+  const months = Object.keys(byMonth).sort().reverse();
+  tbody.innerHTML = months.map(ym => {
+    const [y, m] = ym.split('-');
+    const label = `${y}年${parseInt(m)}月`;
+    const d = byMonth[ym];
+    const isCur = ym === nowYM;
+    return `<tr class="${isCur ? 'bill-cur-month' : ''}">
+      <td><b>${label}</b></td>
+      <td style="text-align:right;">${d.count}</td>
+      <td class="bill-amount" style="text-align:right;">${jpy(d.total)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBillingDetail(filter) {
+  const q = (filter || '').trim().toLowerCase();
+  const filtered = q
+    ? billingRecords.filter(r =>
+        r.userName.toLowerCase().includes(q) ||
+        r.pack.toLowerCase().includes(q) ||
+        r.userId.includes(q))
+    : billingRecords;
+
+  const methodLabel = m => {
+    if (m === 'PURCHASE_BY_APPLE_PAYMENT') return 'Apple Pay';
+    if (m === 'CREDIT_3D2') return 'クレジット';
+    return m;
+  };
+
+  const tbody = $('billingDetailBody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">該当なし</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td style="white-space:nowrap;">${x(r.paidOn.slice(0, 16))}</td>
+      <td>${x(r.userName)}</td>
+      <td>${x(r.pack)}</td>
+      <td class="bill-amount" style="text-align:right;">${jpy(r.value)}</td>
+      <td style="font-size:11px;">${x(methodLabel(r.method))}</td>
+      <td style="font-size:11px;">${x(r.platform)}</td>
+    </tr>`).join('');
+}
 </script>
 </body>
 </html>
