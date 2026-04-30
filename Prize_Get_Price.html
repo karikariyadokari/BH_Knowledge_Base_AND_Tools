@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prize Get Price</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif; background: #f0f4f8; color: #1a202c; min-height: 100vh; }
+
+    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+    header h1 { font-size: 1.3rem; }
+    .subtitle { font-size: .8rem; opacity: .85; margin-top: 2px; }
+    #last-updated { font-size: .75rem; opacity: .8; }
+
+    .config-bar { background: white; padding: 10px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #e2e8f0; font-size: .86rem; }
+    .config-bar label { font-weight: 700; color: #4a5568; white-space: nowrap; }
+    .config-bar input[type="text"]   { border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 10px; font-size: .84rem; min-width: 320px; flex: 1; }
+    .config-bar input[type="number"] { border: 1px solid #cbd5e0; border-radius: 6px; padding: 5px 9px;  font-size: .84rem; width: 72px; }
+    .btn { padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: .86rem; font-weight: 700; transition: background .15s, opacity .15s; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #5a67d8; }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-refresh { background: #ed8936; color: white; }
+    .btn-refresh:hover:not(:disabled) { background: #dd6b20; }
+    .btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-stop { background: #e53e3e; color: white; }
+    .btn-stop:hover { background: #c53030; }
+
+    .period-bar { background: white; padding: 10px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid #e2e8f0; }
+    .period-btns { display: flex; background: #f7fafc; border-radius: 8px; padding: 3px; gap: 2px; }
+    .period-btn { padding: 5px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: .84rem; font-weight: 700; color: #718096; background: transparent; transition: all .15s; }
+    .period-btn.active { background: #667eea; color: white; box-shadow: 0 1px 4px rgba(102,126,234,.4); }
+    .nav-area { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .nav-btn { padding: 5px 10px; border: 1px solid #cbd5e0; border-radius: 6px; background: white; cursor: pointer; font-size: .82rem; color: #4a5568; transition: background .12s; }
+    .nav-btn:hover { background: #edf2f7; }
+    .nav-btn.today { background: #ebf8ff; border-color: #bee3f8; color: #2b6cb0; font-weight: 700; }
+    #period-label { font-size: .88rem; font-weight: 700; color: #2d3748; min-width: 200px; text-align: center; }
+
+    main { padding: 20px 24px; max-width: 1440px; margin: 0 auto; }
+
+    .status { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: .86rem; white-space: pre-wrap; }
+    .status.loading { background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
+    .status.error   { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+    .status.success { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+    .status.hidden  { display: none; }
+    .spinner { flex-shrink: 0; width: 17px; height: 17px; border: 3px solid #bee3f8; border-top-color: #2b6cb0; border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .card { background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .card-label { font-size: .72rem; color: #718096; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+    .card-value { font-size: 1.65rem; font-weight: 800; color: #2d3748; margin-top: 3px; }
+
+    .tabs { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; gap: 2px; }
+    .tab-btn { padding: 8px 20px; border: none; background: none; cursor: pointer; font-size: .86rem; font-weight: 700; color: #718096; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s, border-color .15s; }
+    .tab-btn.active { color: #667eea; border-bottom-color: #667eea; }
+    .tab-content        { display: none; }
+    .tab-content.active { display: block; }
+
+    .table-wrap { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: auto; }
+    .table-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 8px; }
+    .table-header h2 { font-size: .92rem; color: #2d3748; }
+    .search-input { padding: 5px 11px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: .82rem; width: 200px; }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    thead { background: #f7fafc; position: sticky; top: 0; z-index: 1; }
+    th { padding: 10px 13px; text-align: left; font-weight: 700; color: #4a5568; white-space: nowrap; border-bottom: 2px solid #e2e8f0; cursor: pointer; user-select: none; }
+    th:hover { background: #edf2f7; }
+    th.sorted-asc::after  { content: ' ▲'; font-size: .7em; color: #667eea; }
+    th.sorted-desc::after { content: ' ▼'; font-size: .7em; color: #667eea; }
+    td { padding: 8px 13px; border-bottom: 1px solid #f7fafc; vertical-align: middle; }
+    tr:hover td { background: #fafbff; }
+    tr:last-child td { border-bottom: none; }
+
+    .rate-badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: .78rem; font-weight: 700; min-width: 50px; text-align: center; }
+    .rate-ideal { background: #c6f6d5; color: #22543d; }
+    .rate-low   { background: #bee3f8; color: #2a4365; }
+    .rate-high  { background: #fed7d7; color: #742a2a; }
+    .rate-na    { background: #e2e8f0; color: #718096; }
+    .type-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: .74rem; font-weight: 600; background: #ebf8ff; color: #2b6cb0; }
+    .status-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: .74rem; font-weight: 600; }
+    .status-active   { background: #c6f6d5; color: #276749; }
+    .status-inactive { background: #fed7d7; color: #c53030; }
+    .win-count  { color: #276749; font-weight: 700; }
+    .lose-count { color: #c53030; font-weight: 700; }
+    .rank-cell  { color: #a0aec0; font-weight: 700; font-size: .78rem; text-align: right; width: 32px; }
+    .empty-state { text-align: center; padding: 40px; color: #a0aec0; font-size: .9rem; }
+    .note { font-size: .76rem; color: #718096; margin-top: 8px; padding: 0 4px; }
+
+    .local-wrap { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 22px; }
+    .local-wrap h2 { font-size: 1rem; color: #2d3748; margin-bottom: 10px; }
+    .local-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+    .local-row label { font-weight: 700; color: #4a5568; font-size: .86rem; min-width: 110px; }
+    .uid-badge { background: #ebf8ff; color: #2b6cb0; border-radius: 10px; padding: 2px 10px; font-size: .78rem; font-weight: 700; }
+    .local-actions { display: flex; gap: 10px; margin: 14px 0; }
+    .progress-wrap { margin: 14px 0; }
+    .progress-rail { background: #e2e8f0; border-radius: 8px; height: 10px; overflow: hidden; }
+    .progress-fill { background: linear-gradient(90deg, #667eea, #764ba2); height: 10px; border-radius: 8px; transition: width .4s; width: 0; }
+    .progress-label { font-size: .82rem; color: #4a5568; margin-top: 6px; }
+    .howto { background: #f7fafc; border-radius: 8px; padding: 14px 18px; font-size: .84rem; color: #4a5568; margin-top: 16px; }
+    .howto ol { padding-left: 18px; line-height: 2; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Prize Get Price</h1>
+    <div class="subtitle">景品獲得データ閲覧システム</div>
+  </div>
+  <div id="last-updated"></div>
+</header>
+
+<div class="config-bar">
+  <label for="gas-url">GAS Web App URL</label>
+  <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/.../exec" />
+  <label for="target-rate">理想景品率 (%)</label>
+  <input type="number" id="target-rate" value="30" min="1" max="100" step="1" />
+  <button class="btn btn-primary"  id="load-btn"    onclick="loadData()">キャッシュ表示</button>
+  <button class="btn btn-refresh"  id="refresh-btn" onclick="refreshData()">データ更新 ↺</button>
+  <button class="btn btn-stop"     id="stop-btn"    onclick="stopProcess()" style="display:none;">■ 停止</button>
+</div>
+
+<div class="period-bar" id="period-bar" style="display:none;">
+  <div class="period-btns">
+    <button class="period-btn active" onclick="setPeriod('daily',   this)">日次</button>
+    <button class="period-btn"        onclick="setPeriod('weekly',  this)">週次</button>
+    <button class="period-btn"        onclick="setPeriod('monthly', this)">月次</button>
+    <button class="period-btn"        onclick="setPeriod('alltime', this)">全期間</button>
+  </div>
+  <div class="nav-area">
+    <button class="nav-btn" onclick="navigate(-1)">&#9664; 前へ</button>
+    <button class="nav-btn today" onclick="goToday()">今日</button>
+    <span id="period-label"></span>
+    <button class="nav-btn" onclick="navigate(+1)">次へ &#9654;</button>
+  </div>
+</div>
+
+<main>
+  <div id="status" class="status hidden"></div>
+  <div id="cards" class="cards" style="display:none;"></div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab-btn"        onclick="switchTab('prizes', this)">プライズ統計</button>
+    <button class="tab-btn"        onclick="switchTab('tb',     this)">トレジャーボックス統計</button>
+    <button class="tab-btn"        onclick="switchTab('list',   this)">プライズ一覧</button>
+    <button class="tab-btn active" onclick="switchTab('local',  this)">初回フル処理</button>
+  </div>
+
+  <!-- プライズ統計 -->
+  <div id="tab-prizes" class="tab-content">
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>プライズ別統計</h2>
+        <input class="search-input" type="text" placeholder="プライズ名で検索..."
+               oninput="filterTable('prizes-table', this.value)" />
+      </div>
+      <table id="prizes-table">
+        <thead><tr>
+          <th onclick="sortTable('prizes-table',0)">#</th>
+          <th onclick="sortTable('prizes-table',1)">プライズ名</th>
+          <th onclick="sortTable('prizes-table',2)">タイプ</th>
+          <th onclick="sortTable('prizes-table',3)">料金(BCoin)</th>
+          <th onclick="sortTable('prizes-table',4)">天井回数</th>
+          <th onclick="sortTable('prizes-table',5)">総手数</th>
+          <th onclick="sortTable('prizes-table',6)">WIN</th>
+          <th onclick="sortTable('prizes-table',7)">LOSE</th>
+          <th onclick="sortTable('prizes-table',8)">消費BCoin</th>
+          <th onclick="sortTable('prizes-table',9)">景品率</th>
+        </tr></thead>
+        <tbody id="prizes-body">
+          <tr><td colspan="10" class="empty-state">GAS URLを入力して「キャッシュ表示」を押してください</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">景品率 = (料金 × 天井回数 ÷ 4 × WIN数) ÷ 消費BCoin合計 × 100　／　色: 青=低 / 緑=理想±30% / 赤=高</p>
+  </div>
+
+  <!-- トレジャーボックス統計 -->
+  <div id="tab-tb" class="tab-content">
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>トレジャーボックス別統計</h2>
+        <input class="search-input" type="text" placeholder="ボックス名で検索..."
+               oninput="filterTable('tb-table', this.value)" />
+      </div>
+      <table id="tb-table">
+        <thead><tr>
+          <th onclick="sortTable('tb-table',0)">#</th>
+          <th onclick="sortTable('tb-table',1)">ボックス名</th>
+          <th onclick="sortTable('tb-table',2)">ランク</th>
+          <th onclick="sortTable('tb-table',3)">料金(BCoin)</th>
+          <th onclick="sortTable('tb-table',4)">総手数</th>
+          <th onclick="sortTable('tb-table',5)">WIN</th>
+          <th onclick="sortTable('tb-table',6)">LOSE</th>
+          <th onclick="sortTable('tb-table',7)">消費BCoin</th>
+        </tr></thead>
+        <tbody id="tb-body">
+          <tr><td colspan="8" class="empty-state">データを読み込んでください</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- プライズ一覧 -->
+  <div id="tab-list" class="tab-content">
+    <div class="table-wrap">
+      <div class="table-header">
+        <h2>プライズ一覧 (API取得)</h2>
+        <input class="search-input" type="text" placeholder="プライズ名で検索..."
+               oninput="filterTable('list-table', this.value)" />
+      </div>
+      <table id="list-table">
+        <thead><tr>
+          <th onclick="sortTable('list-table',0)">プライズ名 (日本語)</th>
+          <th onclick="sortTable('list-table',1)">プライズ名 (英語)</th>
+          <th onclick="sortTable('list-table',2)">タイプ</th>
+          <th onclick="sortTable('list-table',3)">天井回数</th>
+          <th onclick="sortTable('list-table',4)">状態</th>
+        </tr></thead>
+        <tbody id="list-body">
+          <tr><td colspan="5" class="empty-state">データを読み込んでください</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 初回フル処理 -->
+  <div id="tab-local" class="tab-content">
+    <div class="local-wrap">
+      <h2>初回フル処理</h2>
+      <p class="note">booth_log.csv から全UIDのプレイ履歴をブラウザで直接取得し、Drive に一括保存します。</p>
+
+      <div class="local-row" style="margin-top:14px;">
+        <label>取得 UID 数</label>
+        <span id="local-uid-count" class="uid-badge" style="display:none;"></span>
+        <span id="local-ts-range"  style="font-size:.78rem;color:#718096;"></span>
+      </div>
+
+      <div class="local-actions">
+        <button class="btn btn-primary" id="local-start-btn" onclick="startFullProcess()">① UID リスト取得 &amp; 処理開始</button>
+        <button class="btn btn-stop"    id="local-stop-btn"  onclick="stopProcess()" style="display:none;">■ 停止</button>
+      </div>
+
+      <div class="progress-wrap" id="local-progress-wrap" style="display:none;">
+        <div class="progress-rail"><div class="progress-fill" id="local-progress-fill"></div></div>
+        <div class="progress-label" id="local-progress-label"></div>
+      </div>
+
+      <div class="howto">
+        <strong>手順</strong>
+        <ol>
+          <li>設定バーに GAS Web App URL を入力</li>
+          <li>「① UID リスト取得 &amp; 処理開始」を押す</li>
+          <li>GAS が Drive の booth_log.csv を読み込み、UID をブラウザに返す</li>
+          <li>ブラウザで重複排除 → uid_list.json を Drive に保存</li>
+          <li>ブラウザが直接 API を呼んでプレイ履歴を全ページ取得・集計（5並列）</li>
+          <li>完了後、prize_stats_cache.json と processed_rooms.json を Drive に一括保存（1回のみ）</li>
+          <li>以降は毎時トリガーが自動で差分更新</li>
+        </ol>
+        <p class="note" style="margin-top:8px;">途中停止しても再開時に続きから処理します。タブをアクティブのまま放置してください。</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// =============================================================
+// 定数・グローバル状態
+// =============================================================
+var PARALLEL = 5;  // 並列処理数
+
+var allData   = null;
+var period    = 'daily';
+var anchor    = new Date();
+var sortState = {};
+var running   = false;  // startFullProcess / refreshData 共用フラグ
+
+// LocalStorage から設定を復元
+(function() {
+  var u = localStorage.getItem('pgp_gasUrl');
+  var r = localStorage.getItem('pgp_targetRate');
+  if (u) document.getElementById('gas-url').value = u;
+  if (r) document.getElementById('target-rate').value = r;
+  document.getElementById('tab-local').classList.add('active');
+})();
+
+// =============================================================
+// ステータス表示
+// =============================================================
+function setStatus(type, msg) {
+  var el = document.getElementById('status');
+  el.className = 'status ' + type;
+  el.innerHTML = type === 'loading'
+    ? '<div class="spinner"></div>' + msg
+    : msg;
+  if (type === 'success') setTimeout(function() { el.classList.add('hidden'); }, 5000);
+}
+
+// 進捗バー＋ステータス同時更新
+function setProgress(done, total, msg) {
+  var pct  = total > 0 ? Math.min(100, Math.round(done / total * 100)) : 0;
+  var wrap = document.getElementById('local-progress-wrap');
+  wrap.style.display = 'block';
+  document.getElementById('local-progress-fill').style.width  = pct + '%';
+  document.getElementById('local-progress-label').textContent = msg + ' (' + pct + '%)';
+  setStatus('loading', msg);
+}
+
+// =============================================================
+// HTTP ヘルパー
+// =============================================================
+async function gasGet_(gasUrl, action) {
+  var url  = action ? gasUrl + '?action=' + action : gasUrl;
+  var res  = await fetch(url, { redirect: 'follow' });
+  var text = await res.text();
+  var data;
+  try { data = JSON.parse(text); }
+  catch (e) {
+    throw new Error(
+      'GAS が JSON を返しませんでした\n' +
+      '先頭: ' + text.slice(0, 120).replace(/\n/g, ' ') + '\n' +
+      '→ GAS Web App を最新バージョンで再デプロイしてください'
+    );
+  }
+  if (data.error) throw new Error('GAS エラー: ' + data.message);
+  return data;
+}
+
+async function gasPost_(gasUrl, body) {
+  var res  = await fetch(gasUrl, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(body),
+  });
+  var text = await res.text();
+  var data;
+  try { data = JSON.parse(text); }
+  catch (e) { throw new Error('保存レスポンスが不正: ' + text.slice(0, 120)); }
+  if (data.error) throw new Error('保存失敗: ' + data.message);
+  return data;
+}
+
+async function apiGet_(url, token) {
+  var res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  var json = await res.json();
+  return json;
+}
+
+// =============================================================
+// キャッシュ表示（Drive の保存済みデータを GAS 経由で取得）
+// =============================================================
+async function loadData() {
+  var gasUrl = document.getElementById('gas-url').value.trim();
+  if (!gasUrl) { alert('GAS Web App URL を入力してください'); return; }
+  localStorage.setItem('pgp_gasUrl',     gasUrl);
+  localStorage.setItem('pgp_targetRate', document.getElementById('target-rate').value);
+
+  document.getElementById('load-btn').disabled = true;
+  setStatus('loading', 'キャッシュを読み込み中…');
+
+  try {
+    var data = await gasGet_(gasUrl, null);
+    renderData_(data);
+    setStatus('success', 'キャッシュを表示しました');
+  } catch (e) {
+    setStatus('error', '読み込みエラー: ' + e.message);
+  } finally {
+    document.getElementById('load-btn').disabled = false;
+  }
+}
+
+// =============================================================
+// データ更新（ブラウザが直接 API を呼ぶ・差分更新）
+// =============================================================
+async function refreshData() {
+  var gasUrl = document.getElementById('gas-url').value.trim();
+  if (!gasUrl) { alert('GAS Web App URL を入力してください'); return; }
+  if (running) return;
+  localStorage.setItem('pgp_gasUrl',     gasUrl);
+  localStorage.setItem('pgp_targetRate', document.getElementById('target-rate').value);
+
+  running = true;
+  document.getElementById('refresh-btn').disabled = true;
+  document.getElementById('stop-btn').style.display = 'inline-block';
+  document.getElementById('local-progress-wrap').style.display = 'block';
+
+  try {
+    // ① API 設定取得
+    setStatus('loading', 'API 設定を取得中…');
+    var cfg = await gasGet_(gasUrl, 'getConfig');
+    if (!cfg.apiToken) throw new Error('GAS を最新バージョンで再デプロイしてください');
+
+    // ② UID 取得
+    setStatus('loading', 'UID を取得中…');
+    var uidRows = await gasGet_(gasUrl, 'getUIDsWithTS');
+    var uids    = dedupeUIDs_(uidRows);
+
+    // ③ 既存キャッシュ読み込み
+    setProgress(0, uids.length, '既存キャッシュを読み込み中… (' + uids.length + ' UID)');
+    var fc = await gasGet_(gasUrl, 'getFullCache');
+    var ws = await buildWorkspace_(fc, uids, cfg.prizesApi, cfg.apiToken, function(msg) {
+      setProgress(0, uids.length, msg);
+    });
+
+    // ④ 差分処理（allPages=false → 新規ゼロページで打ち切り）
+    var errors = 0, bi = 0;
+    for (; bi < uids.length; bi += PARALLEL) {
+      if (!running) break;
+      setProgress(bi, uids.length,
+        bi + ' / ' + uids.length + ' UID 差分更新中 (' + PARALLEL + '並列) … 処理済み ' +
+        ws.processedRooms.size + ' room');
+      var batch = uids.slice(bi, Math.min(bi + PARALLEL, uids.length));
+      await Promise.all(batch.map(function(uid) {
+        return fetchAllPages_(uid, cfg.historyApiBase, cfg.apiToken, ws.processedRooms, false)
+          .then(function(recs) {
+            recs.forEach(function(r) { applyRecord_(r, ws.prizeMap, ws.cache, ws.processedRooms); });
+          })
+          .catch(function(e) { errors++; console.warn('UID', uid, e.message); });
+      }));
+    }
+
+    // ⑤ Drive に一括保存（1回のみ）
+    var done = Math.min(bi, uids.length);
+    setProgress(done, uids.length, 'Drive に保存中…');
+    ws.cache.processedRoomIds = Array.from(ws.processedRooms);
+    ws.cache.lastUpdated      = new Date().toISOString();
+    await gasPost_(gasUrl, ws.cache);
+
+    var msg = done >= uids.length
+      ? '✓ 差分更新完了 (' + uids.length + ' UID' + (errors ? ' / エラー: ' + errors + '件' : '') + ')'
+      : '停止: ' + done + '/' + uids.length + ' UID まで更新';
+    setProgress(done, uids.length, msg);
+    if (running) await loadData();
+
+  } catch (e) {
+    setStatus('error', '更新エラー: ' + e.message);
+  } finally {
+    running = false;
+    document.getElementById('refresh-btn').disabled = false;
+    document.getElementById('stop-btn').style.display = 'none';
+  }
+}
+
+// =============================================================
+// 初回フル処理（ブラウザが直接 API を呼ぶ・全ページ強制取得）
+// =============================================================
+async function startFullProcess() {
+  var gasUrl = document.getElementById('gas-url').value.trim();
+  if (!gasUrl) { alert('設定バーに GAS Web App URL を入力してください'); return; }
+  if (running) return;
+
+  running = true;
+  document.getElementById('local-start-btn').disabled = true;
+  document.getElementById('local-stop-btn').style.display = 'inline-block';
+  document.getElementById('local-progress-wrap').style.display = 'block';
+
+  try {
+    // ① API 設定取得
+    setProgress(0, 1, 'API 設定を取得中…');
+    var cfg = await gasGet_(gasUrl, 'getConfig');
+    if (!cfg.apiToken) throw new Error('GAS を最新バージョンで再デプロイしてください');
+
+    // ② booth_log.csv から UID 取得
+    setProgress(0, 1, 'booth_log.csv から UID を取得中…');
+    var uidRows = await gasGet_(gasUrl, 'getUIDsWithTS');
+    var uids    = dedupeUIDs_(uidRows);
+    var maxTs   = uidRows.reduce(function(m, r) {
+      return (!m || (r.timestamp && r.timestamp > m)) ? (r.timestamp || m) : m;
+    }, null);
+
+    var badge = document.getElementById('local-uid-count');
+    badge.textContent   = '重複排除後: ' + uids.length + ' UID';
+    badge.style.display = 'inline-block';
+    if (maxTs) document.getElementById('local-ts-range').textContent = '最新: ' + maxTs.slice(0, 10);
+
+    // ③ uid_list.json を Drive に保存
+    setProgress(0, uids.length, 'uid_list.json を Drive に保存中…');
+    await gasPost_(gasUrl, {
+      processedUids:    uids,
+      lastCsvTimestamp: maxTs,
+      lastUpdated:      new Date().toISOString(),
+    });
+
+    // ④ プライズ一覧のみ既存キャッシュから取得（days と processedRooms は必ずリセット）
+    // ※ processedRooms を引き継ぐと前回処理済みレコードを全スキップするため "何も変わらない" になる
+    setProgress(0, uids.length, 'プライズ一覧を取得中…');
+    var fc = await gasGet_(gasUrl, 'getFullCache');
+    var fcFresh = { days: {}, prizeList: fc.prizeList || [], processedRoomIds: [] };
+    var ws = await buildWorkspace_(fcFresh, uids, cfg.prizesApi, cfg.apiToken, function(msg) {
+      setProgress(0, uids.length, msg);
+    });
+
+    // ⑤ 全 UID を並列処理（allPages=true → 全ページ強制取得）
+    var errors = 0, totalRecs = 0, bi = 0;
+    for (; bi < uids.length; bi += PARALLEL) {
+      if (!running) break;
+      setProgress(bi, uids.length,
+        bi + ' / ' + uids.length + ' UID 処理中 (' + PARALLEL + '並列) | ' +
+        '取得レコード: ' + totalRecs + ' | room: ' + ws.processedRooms.size);
+      var batch = uids.slice(bi, Math.min(bi + PARALLEL, uids.length));
+      await Promise.all(batch.map(function(uid) {
+        return fetchAllPages_(uid, cfg.historyApiBase, cfg.apiToken, ws.processedRooms, true)
+          .then(function(recs) {
+            totalRecs += recs.length;
+            recs.forEach(function(r) { applyRecord_(r, ws.prizeMap, ws.cache, ws.processedRooms); });
+          })
+          .catch(function(e) { errors++; console.warn('UID', uid, e.message); });
+      }));
+    }
+
+    // ⑥ Drive に一括保存（完了・停止どちらも）
+    var done = Math.min(bi, uids.length);
+    setProgress(done, uids.length, 'Drive に一括保存中…');
+    ws.cache.processedRoomIds = Array.from(ws.processedRooms);
+    ws.cache.lastUpdated      = new Date().toISOString();
+    ws.cache.batchNextIdx     = done;   // スキャン進捗をカード表示に反映
+    await gasPost_(gasUrl, ws.cache);
+
+    var msg = running
+      ? '✓ 完了: ' + uids.length + ' UID / ' + totalRecs + ' レコード取得' +
+        (errors ? ' (エラー: ' + errors + '件)' : '')
+      : '停止: ' + done + '/' + uids.length + ' UID / ' + totalRecs + ' レコード取得';
+    setProgress(done, uids.length, msg);
+    if (running) await loadData();
+
+  } catch (e) {
+    setProgress(0, 1, 'エラー: ' + e.message);
+    setStatus('error', 'エラー: ' + e.message);
+  } finally {
+    running = false;
+    document.getElementById('local-start-btn').disabled = false;
+    document.getElementById('local-stop-btn').style.display = 'none';
+  }
+}
+
+function stopProcess() {
+  running = false;
+  document.getElementById('stop-btn').style.display       = 'none';
+  document.getElementById('local-stop-btn').style.display = 'none';
+  document.getElementById('refresh-btn').disabled         = false;
+}
+
+// =============================================================
+// UID 重複排除
+// =============================================================
+function dedupeUIDs_(uidRows) {
+  var seen = {};
+  (uidRows || []).forEach(function(r) { if (r.uid) seen[r.uid] = true; });
+  return Object.keys(seen);
+}
+
+// =============================================================
+// キャッシュ・prizeMap・processedRooms の初期化
+// =============================================================
+async function buildWorkspace_(fc, uids, prizesApi, apiToken, statusFn) {
+  var cache = {
+    days:             fc.days             || {},
+    prizeList:        fc.prizeList        || [],
+    processedRoomIds: fc.processedRoomIds || [],
+    totalUids:        uids.length,
+    batchNextIdx:     0,
+  };
+  var processedRooms = new Set(cache.processedRoomIds);
+
+  if (cache.prizeList.length === 0) {
+    statusFn('プライズ一覧を API から取得中…');
+    cache.prizeList = await fetchPrizeList_(prizesApi, apiToken);
+  }
+  var prizeMap = {};
+  cache.prizeList.forEach(function(p) { if (p.nameEN) prizeMap[p.nameEN] = p; });
+
+  return { cache: cache, processedRooms: processedRooms, prizeMap: prizeMap };
+}
+
+// =============================================================
+// プライズ一覧を全ページ取得（日本語名付き）
+// =============================================================
+async function fetchPrizeList_(prizesApi, apiToken) {
+  var list = [], page = 1, total = 1;
+  do {
+    var res  = await fetch(
+      prizesApi + '?page=' + page + '&limit=50&mode_type=PVE_SINGLE_PLAY',
+      { headers: { 'Authorization': 'Bearer ' + apiToken } }
+    );
+    var json = await res.json();
+    if (!json.success) break;
+    list  = list.concat(json.data.records);
+    total = json.data.total_page;
+    page++;
+  } while (page <= total);
+
+  return list.map(function(p) {
+    return {
+      id:               p.id,
+      nameJP:           p.name && p.name.JP ? p.name.JP.content : '',
+      nameEN:           p.name && p.name.EN ? p.name.EN.content : '',
+      prizeType:        p.prize_type,
+      assistGaugeLimit: p.assist_gauge_limit,
+      status:           p.status,
+    };
+  });
+}
+
+// =============================================================
+// UID 1件分のプレイ履歴を全ページ取得
+//   allPages=true : 全ページ強制取得（初回フル処理用）
+//   allPages=false: 新規ゼロで打ち切り（差分更新用）
+//
+// ページ取得失敗時はそこで打ち切り、取得済みレコードを返す（全体を捨てない）
+// =============================================================
+async function fetchAllPages_(uid, historyApiBase, apiToken, processedRooms, allPages) {
+  var allNew    = [];
+  var page      = 1;
+  var totalPage = 999;
+
+  while (page <= totalPage) {
+    if (page > 1) await new Promise(function(r) { setTimeout(r, 300); });
+
+    var json;
+    try {
+      var res = await fetch(
+        historyApiBase + uid + '?page=' + page + '&limit=50',
+        { headers: { 'Authorization': 'Bearer ' + apiToken } }
+      );
+      json = await res.json();
+    } catch (e) {
+      // ネットワーク/パースエラー: このページで打ち切り、取得済みを返す
+      console.warn('[fetchAllPages] UID=' + uid + ' page=' + page + ' error:', e.message);
+      break;
+    }
+
+    if (!json.success) break;
+
+    totalPage     = json.data.total_page;
+    var recs      = json.data.records;
+    var newOnPage = 0;
+
+    for (var i = 0; i < recs.length; i++) {
+      if (recs[i].room_id && !processedRooms.has(recs[i].room_id)) {
+        allNew.push(recs[i]);
+        newOnPage++;
+      }
+    }
+
+    if (page >= totalPage) break;
+    // 差分更新のみ: 新規ゼロ → 以降も古いレコードなので打ち切り
+    if (!allPages && newOnPage === 0) break;
+    page++;
+  }
+
+  if (allPages && totalPage > 1) {
+    console.log('[fetchAllPages] UID=' + uid + ' ' + page + '/' + totalPage + 'p → ' + allNew.length + 'rec');
+  }
+  return allNew;
+}
+
+// =============================================================
+// レコード処理（ブラウザ用）
+//   room_id が未処理なら日次データに加算して processedRooms に追加
+// =============================================================
+function applyRecord_(r, prizeMap, cache, processedRooms) {
+  if (!r.room_id || processedRooms.has(r.room_id)) return;
+
+  var pf    = r.play_fee || {};
+  var qty   = pf.quantity || 0;
+  var turn  = r.turn      || 0;
+  var bcoin = qty * turn;
+  var date  = toDateJST_((r.start_play_time || 0) * 1000);
+
+  if (!cache.days[date]) cache.days[date] = { prizes: {}, treasureBoxes: {} };
+  var day = cache.days[date];
+
+  if (pf.treasure_box_id != null) {
+    // トレジャーボックス: 日本語名を優先
+    var tbKey = (pf.treasure_box_name_map && pf.treasure_box_name_map.JP)
+                ? pf.treasure_box_name_map.JP.content
+                : (pf.treasure_box_name || 'トレジャーボックス');
+    if (!day.treasureBoxes[tbKey]) {
+      day.treasureBoxes[tbKey] = {
+        nameJP:   tbKey,
+        nameEN:   pf.treasure_box_name || tbKey,
+        rank:     pf.treasure_box_rank != null ? pf.treasure_box_rank : null,
+        quantity: qty,
+        turns: 0, wins: 0, losses: 0, bcoin: 0,
+      };
+    }
+    var tb = day.treasureBoxes[tbKey];
+    tb.turns += turn;
+    tb.bcoin += bcoin;
+    if      (r.status === 'WIN')  tb.wins++;
+    else if (r.status === 'LOSE') tb.losses++;
+  }
+
+  // TB経由でも prize_name があればプライズ統計にも記録（TB集計と両立）
+  if (r.prize_name) {
+    var nameEN = r.prize_name;
+    var info   = prizeMap[nameEN] || {};
+    if (!day.prizes[nameEN]) {
+      day.prizes[nameEN] = {
+        nameJP:           info.nameJP           || nameEN,
+        nameEN:           nameEN,
+        prizeType:        r.prize_type          || '',
+        quantity:         qty,
+        assistGaugeLimit: info.assistGaugeLimit != null ? info.assistGaugeLimit : null,
+        turns: 0, wins: 0, losses: 0, bcoin: 0,
+      };
+    }
+    var p = day.prizes[nameEN];
+    p.turns += turn;
+    p.bcoin += bcoin;
+    if      (r.status === 'WIN')  p.wins++;
+    else if (r.status === 'LOSE') p.losses++;
+  }
+
+  processedRooms.add(r.room_id);
+}
+
+// =============================================================
+// 表示データの更新
+// =============================================================
+function renderData_(data) {
+  allData = data;
+
+  if (data.lastUpdated) {
+    document.getElementById('last-updated').textContent =
+      '最終更新: ' + new Date(data.lastUpdated).toLocaleString('ja-JP');
+  }
+
+  var hasData = data.lastUpdated || Object.keys(data.days || {}).length > 0;
+  if (hasData) {
+    document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('tab-prizes').classList.add('active');
+    document.querySelector('.tab-btn[onclick*="prizes"]').classList.add('active');
+  }
+
+  document.getElementById('period-bar').style.display = 'flex';
+  document.getElementById('cards').style.display      = 'grid';
+  anchor = new Date();
+  renderAll();
+}
+
+// =============================================================
+// 期間ユーティリティ
+// =============================================================
+function fmtDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+function getDateRange() {
+  if (period === 'alltime') {
+    return Object.keys((allData && allData.days) || {}).sort();
+  }
+
+  if (period === 'daily') return [fmtDate(anchor)];
+
+  if (period === 'weekly') {
+    var start = new Date(anchor);
+    var dow = start.getDay();
+    start.setDate(start.getDate() - (dow === 0 ? 6 : dow - 1));
+    var dates = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(start); d.setDate(d.getDate() + i);
+      dates.push(fmtDate(d));
+    }
+    return dates;
+  }
+
+  if (period === 'monthly') {
+    var y = anchor.getFullYear(), m = anchor.getMonth();
+    var days = new Date(y, m + 1, 0).getDate();
+    var dates = [];
+    for (var dd = 1; dd <= days; dd++) {
+      dates.push(y + '-' + String(m + 1).padStart(2, '0') + '-' + String(dd).padStart(2, '0'));
+    }
+    return dates;
+  }
+  return [];
+}
+
+function periodLabel() {
+  if (period === 'alltime') {
+    var dates = Object.keys((allData && allData.days) || {}).sort();
+    if (dates.length === 0) return '全期間';
+    return '全期間 (' + dates[0] + ' 〜 ' + dates[dates.length - 1] + ')';
+  }
+
+  var wd = ['日','月','火','水','木','金','土'];
+  if (period === 'daily') {
+    return anchor.getFullYear() + '年' + (anchor.getMonth() + 1) + '月' + anchor.getDate() + '日'
+      + '（' + wd[anchor.getDay()] + '）';
+  }
+  if (period === 'weekly') {
+    var s = new Date(anchor);
+    var dow = s.getDay();
+    s.setDate(s.getDate() - (dow === 0 ? 6 : dow - 1));
+    var e = new Date(s); e.setDate(e.getDate() + 6);
+    return s.getFullYear() + '年' + (s.getMonth() + 1) + '月' + s.getDate() + '日'
+      + '〜' + (e.getMonth() + 1) + '月' + e.getDate() + '日';
+  }
+  if (period === 'monthly') {
+    return anchor.getFullYear() + '年' + (anchor.getMonth() + 1) + '月';
+  }
+  return '';
+}
+
+function navigate(dir) {
+  if (period === 'alltime') return;  // 全期間はナビゲーション不要
+  if (period === 'daily')        anchor.setDate(anchor.getDate() + dir);
+  else if (period === 'weekly')  anchor.setDate(anchor.getDate() + dir * 7);
+  else if (period === 'monthly') anchor.setMonth(anchor.getMonth() + dir);
+  renderAll();
+}
+
+function goToday()           { anchor = new Date(); renderAll(); }
+
+function setPeriod(p, btn) {
+  period = p;
+  document.querySelectorAll('.period-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderAll();
+}
+
+// =============================================================
+// 集計
+// =============================================================
+function aggregateDays(dateList) {
+  if (!allData) return { prizeStats: [], treasureBoxStats: [] };
+
+  var days      = allData.days      || {};
+  var prizeList = allData.prizeList || [];
+  var plByEN    = {};
+  prizeList.forEach(function(p) { if (p.nameEN) plByEN[p.nameEN] = p; });
+
+  var prizes = {}, tbs = {};
+
+  dateList.forEach(function(date) {
+    var day = days[date];
+    if (!day) return;
+
+    Object.keys(day.prizes || {}).forEach(function(nameEN) {
+      var s  = day.prizes[nameEN];
+      var pl = plByEN[nameEN] || {};
+      if (!prizes[nameEN]) {
+        prizes[nameEN] = {
+          nameJP:           s.nameJP || pl.nameJP || nameEN,
+          nameEN:           nameEN,
+          prizeType:        s.prizeType || '',
+          quantity:         s.quantity,
+          assistGaugeLimit: s.assistGaugeLimit || pl.assistGaugeLimit || null,
+          turns: 0, wins: 0, losses: 0, bcoin: 0,
+        };
+      }
+      prizes[nameEN].turns  += s.turns  || 0;
+      prizes[nameEN].wins   += s.wins   || 0;
+      prizes[nameEN].losses += s.losses || 0;
+      prizes[nameEN].bcoin  += s.bcoin  || 0;
+    });
+
+    Object.keys(day.treasureBoxes || {}).forEach(function(key) {
+      var s = day.treasureBoxes[key];
+      if (!tbs[key]) {
+        tbs[key] = {
+          nameJP: s.nameJP || key,
+          nameEN: s.nameEN || key,
+          rank:     s.rank,
+          quantity: s.quantity,
+          turns: 0, wins: 0, losses: 0, bcoin: 0,
+        };
+      }
+      tbs[key].turns  += s.turns  || 0;
+      tbs[key].wins   += s.wins   || 0;
+      tbs[key].losses += s.losses || 0;
+      tbs[key].bcoin  += s.bcoin  || 0;
+    });
+  });
+
+  // 景品率計算: (料金 × 天井回数 ÷ 4 × WIN数) ÷ 消費BCoin合計 × 100
+  var target = parseFloat(document.getElementById('target-rate').value) || 30;
+  Object.values(prizes).forEach(function(p) {
+    p.prizeRate = (p.assistGaugeLimit != null && p.quantity > 0 && p.bcoin > 0)
+      ? Math.round(p.quantity * p.assistGaugeLimit / 4 * p.wins / p.bcoin * 10000) / 100
+      : null;
+  });
+
+  return {
+    prizeStats:       Object.values(prizes).sort(function(a, b) { return b.bcoin - a.bcoin; }),
+    treasureBoxStats: Object.values(tbs).sort(function(a, b) { return (a.rank || 99) - (b.rank || 99); }),
+  };
+}
+
+// =============================================================
+// 描画
+// =============================================================
+function renderAll() {
+  if (!allData) return;
+  var dateList = getDateRange();
+  var agg      = aggregateDays(dateList);
+  document.getElementById('period-label').textContent = periodLabel();
+  renderCards_(agg, dateList);
+  renderPrizeStats_(agg.prizeStats);
+  renderTBStats_(agg.treasureBoxStats);
+  renderPrizeList_(allData.prizeList || []);
+}
+
+function renderCards_(agg, dateList) {
+  var all        = agg.prizeStats.concat(agg.treasureBoxStats);
+  var totalBcoin = all.reduce(function(s, x) { return s + (x.bcoin || 0); }, 0);
+  var totalWins  = all.reduce(function(s, x) { return s + (x.wins  || 0); }, 0);
+  var hasDays    = dateList.filter(function(d) { return allData.days && allData.days[d]; }).length;
+  var totalUids  = allData.totalUids || 0;
+  var batchNext  = allData.batchNextIdx || 0;
+  var scanLabel  = totalUids > 0
+    ? batchNext + ' / ' + totalUids + ' UID (' + Math.round(batchNext / totalUids * 100) + '%)'
+    : '取得中…';
+
+  document.getElementById('cards').innerHTML =
+    card_('スキャン進捗',    scanLabel) +
+    card_('期間内日数',      hasDays + '日') +
+    card_('プライズ種類',    agg.prizeStats.length + '種') +
+    card_('獲得数 (WIN)',    fmt_(totalWins)) +
+    card_('総消費 BCoin',   fmt_(totalBcoin));
+}
+
+function card_(label, value) {
+  return '<div class="card"><div class="card-label">' + label +
+    '</div><div class="card-value">' + value + '</div></div>';
+}
+
+function renderPrizeStats_(stats) {
+  var target = parseFloat(document.getElementById('target-rate').value) || 30;
+  var tbody  = document.getElementById('prizes-body');
+  if (!stats || stats.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">この期間のデータなし</td></tr>';
+    return;
+  }
+  tbody.innerHTML = stats.map(function(s, i) {
+    var rc = rateClass_(s.prizeRate, target);
+    var rt = s.prizeRate !== null ? s.prizeRate + '%' : 'N/A';
+    return '<tr>' +
+      '<td class="rank-cell">' + (i + 1) + '</td>' +
+      '<td>' + esc_(s.nameJP || s.nameEN || '-') + '</td>' +
+      '<td><span class="type-badge">' + prizeTypeLabel_(s.prizeType) + '</span></td>' +
+      '<td>' + fmt_(s.quantity) + '</td>' +
+      '<td>' + fmt_(s.assistGaugeLimit) + '</td>' +
+      '<td>' + fmt_(s.turns) + '</td>' +
+      '<td class="win-count">'  + fmt_(s.wins)   + '</td>' +
+      '<td class="lose-count">' + fmt_(s.losses) + '</td>' +
+      '<td>' + fmt_(s.bcoin) + '</td>' +
+      '<td><span class="rate-badge ' + rc + '">' + rt + '</span></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderTBStats_(stats) {
+  var tbody = document.getElementById('tb-body');
+  if (!stats || stats.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">この期間のデータなし</td></tr>';
+    return;
+  }
+  tbody.innerHTML = stats.map(function(s, i) {
+    return '<tr>' +
+      '<td class="rank-cell">' + (i + 1) + '</td>' +
+      '<td>' + esc_(s.nameJP || s.nameEN || '-') + '</td>' +
+      '<td>' + (s.rank != null ? 'Lv.' + s.rank : '-') + '</td>' +
+      '<td>' + fmt_(s.quantity) + '</td>' +
+      '<td>' + fmt_(s.turns)   + '</td>' +
+      '<td class="win-count">'  + fmt_(s.wins)   + '</td>' +
+      '<td class="lose-count">' + fmt_(s.losses) + '</td>' +
+      '<td>' + fmt_(s.bcoin) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderPrizeList_(list) {
+  var tbody = document.getElementById('list-body');
+  if (!list || list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">プライズ一覧データなし</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(function(p) {
+    return '<tr>' +
+      '<td>' + esc_(p.nameJP || '-') + '</td>' +
+      '<td>' + esc_(p.nameEN || '-') + '</td>' +
+      '<td><span class="type-badge">' + prizeTypeLabel_(p.prizeType) + '</span></td>' +
+      '<td>' + fmt_(p.assistGaugeLimit) + '</td>' +
+      '<td><span class="status-badge ' + (p.status === 'ACTIVE' ? 'status-active' : 'status-inactive') + '">' +
+        (p.status === 'ACTIVE' ? '有効' : (p.status || '-')) + '</span></td>' +
+    '</tr>';
+  }).join('');
+}
+
+// =============================================================
+// タブ
+// =============================================================
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b)     { b.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// =============================================================
+// フィルタ・ソート
+// =============================================================
+function filterTable(tableId, query) {
+  var q = query.toLowerCase();
+  document.querySelectorAll('#' + tableId + ' tbody tr').forEach(function(row) {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function sortTable(tableId, col) {
+  var table = document.getElementById(tableId);
+  var tbody = table.querySelector('tbody');
+  var rows  = Array.from(tbody.querySelectorAll('tr'));
+  var key   = tableId + '_' + col;
+  var asc   = sortState[key] !== 'asc';
+  sortState[key] = asc ? 'asc' : 'desc';
+
+  table.querySelectorAll('th').forEach(function(th, i) {
+    th.classList.remove('sorted-asc', 'sorted-desc');
+    if (i === col) th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+  });
+
+  // # 列 (col=0) でソートする場合は元の順序に戻す感覚なので数値比較のまま
+  rows.sort(function(a, b) {
+    var aT = (a.cells[col] || {}).textContent.trim();
+    var bT = (b.cells[col] || {}).textContent.trim();
+    var aN = parseFloat(aT.replace(/[^\d.-]/g, ''));
+    var bN = parseFloat(bT.replace(/[^\d.-]/g, ''));
+    if (!isNaN(aN) && !isNaN(bN)) return asc ? aN - bN : bN - aN;
+    return asc ? aT.localeCompare(bT, 'ja') : bT.localeCompare(aT, 'ja');
+  });
+  rows.forEach(function(r) { tbody.appendChild(r); });
+
+  // ソート後にランク番号を振り直す
+  var rank = 0;
+  Array.from(tbody.querySelectorAll('tr')).forEach(function(r) {
+    var cell = r.querySelector('.rank-cell');
+    if (cell) cell.textContent = ++rank;
+  });
+}
+
+// =============================================================
+// フォーマット・ユーティリティ
+// =============================================================
+function fmt_(n) {
+  if (n == null) return '-';
+  return Number(n).toLocaleString('ja-JP');
+}
+
+function esc_(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function prizeTypeLabel_(t) {
+  return { AR_PROP: 'AR景品', AR_STAGE: 'ARステージ', DIGITAL_FIGURE: 'デジタルFIG' }[t] || (t || '-');
+}
+
+function rateClass_(r, target) {
+  if (r == null || isNaN(parseFloat(r))) return 'rate-na';
+  var v = parseFloat(r);
+  if (v < target * .7)   return 'rate-low';
+  if (v <= target * 1.3) return 'rate-ideal';
+  return 'rate-high';
+}
+
+function toDateJST_(ms) {
+  return new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+}
+</script>
+</body>
+</html>
