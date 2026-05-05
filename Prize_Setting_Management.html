@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>プライズ設定管理</title>
+  <style>
+    :root {
+      --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+      --border: #475569; --accent: #3b82f6; --accent-h: #2563eb;
+      --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+      --text: #f1f5f9; --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Meiryo, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Header */
+    .hdr { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; flex-shrink: 0; }
+    .hdr h1 { font-size: 17px; font-weight: 800; color: var(--accent); white-space: nowrap; }
+    .token-wrap { flex: 1; min-width: 280px; display: flex; gap: 6px; align-items: center; }
+    .token-wrap label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .token-wrap input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: var(--text); font-size: 12px; font-family: monospace; }
+    .token-wrap input:focus { outline: none; border-color: var(--accent); }
+
+    /* Layout */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* Sidebar */
+    .sidebar { width: 380px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .sb-filters { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+    .sb-filters label { font-size: 11px; color: var(--muted); }
+    .sb-filters select, .sb-filters input[type=number] { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; color: var(--text); font-size: 12px; }
+    .sb-filters select:focus, .sb-filters input:focus { outline: none; border-color: var(--accent); }
+    .sb-filters .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .prize-list { flex: 1; overflow-y: auto; }
+    .prize-item { padding: 10px 12px; border-bottom: 1px solid rgba(71,85,105,0.4); cursor: pointer; display: flex; gap: 9px; align-items: flex-start; transition: background 0.1s; }
+    .prize-item:hover { background: var(--surface2); }
+    .prize-item.sel { background: var(--surface2); border-left: 3px solid var(--accent); padding-left: 9px; }
+    .prize-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; background: var(--surface2); flex-shrink: 0; }
+    .prize-thumb-ph { width: 44px; height: 44px; border-radius: 6px; background: var(--surface2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 18px; }
+    .pi-info { flex: 1; min-width: 0; }
+    .pi-name { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pi-sub { font-size: 10px; color: var(--muted); margin-top: 2px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+    .badge { padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700; }
+    .b-act { background: #166534; color: #86efac; }
+    .b-ina { background: #451a03; color: #fdba74; }
+    .b-typ { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .pager { padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 6px; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pager .pi { font-size: 11px; color: var(--muted); }
+
+    /* New Prize button */
+    .sb-new-btn { padding: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+
+    /* Filter toggle */
+    .sb-filter-toggle { padding: 7px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 11px; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--border); flex-shrink: 0; user-select: none; letter-spacing: 0.05em; text-transform: uppercase; }
+    .sb-filter-toggle:hover { color: var(--text); background: var(--surface2); }
+
+    /* Main */
+    .main { flex: 1; overflow-y: auto; padding: 20px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--surface); border-radius: 8px; padding: 4px; width: fit-content; }
+    .tab { padding: 7px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); border: none; background: none; transition: all 0.15s; }
+    .tab.active { background: var(--accent); color: white; }
+    .tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+    /* Cards */
+    .card { background: var(--surface); border-radius: 10px; padding: 18px; margin-bottom: 16px; border: 1px solid var(--border); }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+    /* Form */
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .fg input, .fg select, .fg textarea { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 13px; font-family: inherit; transition: border-color 0.15s; }
+    .fg input:focus, .fg select:focus, .fg textarea:focus { outline: none; border-color: var(--accent); background: var(--surface2); }
+    .fg textarea { resize: vertical; min-height: 72px; }
+    .fg .hint { font-size: 10px; color: var(--muted); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .full { grid-column: 1 / -1; }
+
+    /* Toggle */
+    .tg-wrap { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+    .tg-wrap label { font-size: 13px; cursor: pointer; }
+    .tg { position: relative; width: 40px; height: 22px; cursor: pointer; flex-shrink: 0; }
+    .tg input { opacity: 0; width: 0; height: 0; }
+    .tg-sl { position: absolute; inset: 0; background: var(--border); border-radius: 22px; transition: 0.2s; }
+    .tg-sl::before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+    .tg input:checked + .tg-sl { background: var(--accent); }
+    .tg input:checked + .tg-sl::before { transform: translateX(18px); }
+
+    /* Buttons */
+    .btn { padding: 7px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; font-family: inherit; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-p { background: var(--accent); color: white; }
+    .btn-p:hover { background: var(--accent-h); }
+    .btn-s { background: var(--success); color: white; }
+    .btn-d { background: var(--danger); color: white; }
+    .btn-w { background: var(--warning); color: #111; }
+    .btn-g { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-g:hover { background: var(--border); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 14px; margin-top: 4px; border-top: 1px solid var(--border); }
+
+    /* Detail header */
+    .det-hdr { display: flex; gap: 18px; margin-bottom: 20px; align-items: flex-start; }
+    .det-img { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; background: var(--surface); flex-shrink: 0; }
+    .det-img-ph { width: 100px; height: 100px; border-radius: 10px; background: var(--surface); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 36px; }
+    .det-meta { flex: 1; }
+    .det-id { font-size: 11px; color: var(--muted); font-family: monospace; margin-bottom: 5px; }
+    .det-name { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .det-badges { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+    .det-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* Alerts */
+    .alert { padding: 10px 14px; border-radius: 7px; margin-bottom: 14px; font-size: 13px; }
+    .a-ok { background: #14532d; color: #86efac; border: 1px solid #166534; }
+    .a-err { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+    .a-info { background: #1e3a5f; color: #93c5fd; border: 1px solid #1e40af; }
+
+    /* Spinner */
+    .spin { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: rot 0.6s linear infinite; }
+    @keyframes rot { to { transform: rotate(360deg); } }
+    .loading { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 40px; color: var(--muted); font-size: 14px; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty .ico { font-size: 40px; margin-bottom: 10px; }
+
+    /* Raw response */
+    .raw { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 12px; font-family: monospace; font-size: 11px; overflow: auto; max-height: 300px; white-space: pre-wrap; word-break: break-all; color: #a5f3fc; }
+
+    /* Welcome */
+    .welcome { max-width: 520px; margin: 40px auto; text-align: center; }
+    .welcome h2 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+    .welcome p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+    /* Prize count chip */
+    .count-chip { background: var(--accent); color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
+
+    /* Booth items */
+    .booth-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+    .booth-item:last-child { margin-bottom: 0; }
+    .booth-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .booth-num { font-size: 12px; font-weight: 700; color: var(--accent); }
+    .booth-gt-img { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; vertical-align: middle; margin-right: 6px; }
+
+    /* Bulk select */
+    .prize-cb { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; margin-top: 15px; }
+    .prize-item.bulk-sel { background: rgba(59,130,246,0.12); }
+    .bulk-banner { background: var(--accent); color: white; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .bulk-result-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(71,85,105,0.3); font-size: 12px; gap: 8px; }
+    .bulk-result-row:last-child { border-bottom: none; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <h1>🎮 プライズ設定管理</h1>
+  <div class="token-wrap">
+    <label>Bearer Token:</label>
+    <input type="password" id="tokenInput" placeholder="eyJhbGciOi..." autocomplete="off">
+  </div>
+  <button class="btn btn-p btn-sm" onclick="saveToken()">保存</button>
+  <button class="btn btn-g btn-sm" onclick="loadPrizes()">一覧を取得</button>
+  <span id="connStatus" style="font-size:12px;color:var(--muted)"></span>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sb-new-btn">
+      <button class="btn btn-s btn-sm" style="width:100%" onclick="showCreate()">＋ 新規プライズ作成</button>
+    </div>
+    <div id="bulkBanner" style="display:none">
+      <div class="bulk-banner">
+        <span id="bulkCount">0件選択中</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4)" onclick="clearBulkSelection()">解除</button>
+          <button class="btn btn-sm" style="background:white;color:var(--accent);font-weight:700" onclick="showBulkBoothEdit()">ブース一括編集</button>
+        </div>
+      </div>
+    </div>
+    <div class="sb-filter-toggle" onclick="toggleFilters()">
+      <span>🔍 検索フィルター</span>
+      <span id="filterChevron">▼</span>
+    </div>
+    <div class="sb-filters" id="sbFilters" style="display:none">
+      <div class="fg">
+        <label>名前で絞り込み</label>
+        <input type="text" id="filterName" placeholder="プライズ名を入力..." oninput="filterList()" style="width:100%">
+      </div>
+      <div class="fg">
+        <label>モードタイプ</label>
+        <select id="filterMode" onchange="loadPrizes()">
+          <option value="">すべて</option>
+          <option value="PVE_SINGLE_PLAY" selected>PVE_SINGLE_PLAY</option>
+          <option value="PVE_MULTI_PLAY">PVE_MULTI_PLAY</option>
+          <option value="PVP">PVP</option>
+          <option value="STORY">STORY</option>
+          <option value="EVENT">EVENT</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>ステータス</label>
+        <select id="filterStatus" onchange="loadPrizes()">
+          <option value="">すべて</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="NO_ACTIVE">NO_ACTIVE</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>プライズタイプ</label>
+        <select id="filterType" onchange="loadPrizes()">
+          <option value="">すべてのタイプ</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>ライセンサー</label>
+        <select id="filterLicensor" onchange="loadPrizes()">
+          <option value="">すべて</option>
+        </select>
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label>1ページ件数</label>
+          <input type="number" id="filterLimit" value="20" min="1" max="100" onchange="loadPrizes()">
+        </div>
+        <div class="fg" style="justify-content:flex-end;padding-top:14px;">
+          <button class="btn btn-p btn-sm" onclick="loadPrizes()">検索</button>
+        </div>
+      </div>
+    </div>
+    <div class="prize-list" id="prizeList">
+      <div class="empty">
+        <div class="ico">🏆</div>
+        <p>上部でTokenを入力して<br>「一覧を取得」を押してください</p>
+      </div>
+    </div>
+    <div class="pager" id="pager" style="display:none">
+      <button class="btn btn-g btn-sm" id="btnPrev" onclick="changePage(-1)">◀</button>
+      <span class="pi" id="pageInfo"></span>
+      <button class="btn btn-g btn-sm" id="btnNext" onclick="changePage(1)">▶</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main" id="mainArea">
+    <div class="welcome">
+      <div style="font-size:56px;margin-bottom:16px">🎮</div>
+      <h2>プライズ設定管理ツール</h2>
+      <p>Bearer Tokenを入力して「一覧を取得」を押すと、プライズ一覧が表示されます。<br>一覧からプライズを選択して詳細確認・編集、または新規プライズの作成ができます。</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'https://api-admin.bountyhunters.app/api';
+let currentPage = 1;
+let totalPages = 1;
+let allPrizes = [];
+let selectedId = null;
+let gameplayTypes = [];
+let playFees = [];
+let prizeFilter = null;
+let licensors = [];
+let selectedPrizeIds = new Set();
+
+async function loadPrizeFilter() {
+  if (prizeFilter) { populatePrizeTypeSelect(); return prizeFilter; }
+  try {
+    const res = await fetch(`${API}/master-data/prize-filter`, { headers: authHeaders() });
+    const json = await res.json();
+    if (json.success) { prizeFilter = json.data; populatePrizeTypeSelect(); }
+  } catch(e) { console.warn('prize-filter load failed', e); }
+  return prizeFilter;
+}
+
+async function loadLicensors() {
+  if (licensors.length) { populateLicensorSelect(); return licensors; }
+  try {
+    const res = await fetch(`${API}/licensor?page=1&limit=100`, { headers: authHeaders() });
+    const json = await res.json();
+    if (json.success) { licensors = json.data.records || []; populateLicensorSelect(); }
+  } catch(e) { console.warn('licensor load failed', e); }
+  return licensors;
+}
+
+function populatePrizeTypeSelect() {
+  if (!prizeFilter) return;
+  const typeEl = document.getElementById('filterType');
+  if (!typeEl) return;
+  const cur = typeEl.value;
+  typeEl.innerHTML = '<option value="">すべてのタイプ</option>' +
+    prizeFilter.prize_types.map(pt =>
+      `<option value="${pt.prize_type}" ${pt.prize_type === cur ? 'selected' : ''}>${pt.prize_type} (${pt.count})</option>`
+    ).join('');
+}
+
+function populateLicensorSelect() {
+  const licEl = document.getElementById('filterLicensor');
+  if (!licEl) return;
+  const cur = licEl.value;
+  licEl.innerHTML = '<option value="">すべて</option>' +
+    licensors
+      .map(l => {
+        const tr = l.translations || [];
+        const jp = tr.find(t => t.lang_key === 'JP')?.name || '';
+        const en = tr.find(t => t.lang_key === 'EN')?.name || '';
+        const name = jp || en || l.id;
+        return `<option value="${l.id}" ${l.id === cur ? 'selected' : ''}>${escHtml(name)}</option>`;
+      }).join('');
+}
+
+async function loadGameplayTypes() {
+  if (gameplayTypes.length) return gameplayTypes;
+  try {
+    const res = await fetch(`${API}/gameplay-types?page=1&limit=100`, { headers: authHeaders() });
+    const json = await res.json();
+    if (json.success) gameplayTypes = json.data.records || [];
+  } catch (e) { console.warn('gameplay-types load failed', e); }
+  return gameplayTypes;
+}
+
+async function loadPlayFees() {
+  if (playFees.length) return playFees;
+  try {
+    const res = await fetch(`${API}/play-fees?page=1&limit=999&status=ACTIVE`, { headers: authHeaders() });
+    const json = await res.json();
+    if (json.success) playFees = json.data.records || [];
+  } catch (e) { console.warn('play-fees load failed', e); }
+  return playFees;
+}
+
+function playFeeOpts(selId) {
+  const blank = `<option value="">── Play Fee を選択 ──</option>`;
+  const opts = playFees.map(f => {
+    const jpName = f.name?.JP?.content || f.name?.EN?.content || '';
+    const alias = f.alias?.JP?.content || f.alias?.EN?.content || '';
+    const box = f.treasure_box_name ? ` | ${f.treasure_box_name}` : '';
+    const label = `${jpName}（${alias}）[${f.floor_type}]${box}`;
+    return `<option value="${f.id}" ${f.id === selId ? 'selected' : ''}>${escHtml(label)}</option>`;
+  });
+  return blank + opts.join('');
+}
+
+// ─── Token ───────────────────────────────────────────────
+function saveToken() {
+  const v = document.getElementById('tokenInput').value.trim();
+  if (v) { localStorage.setItem('bh_token', v); showAlert('トークンを保存しました', 'ok', 'connStatus'); }
+}
+function getToken() {
+  return localStorage.getItem('bh_token') || document.getElementById('tokenInput').value.trim();
+}
+window.onload = () => {
+  const t = localStorage.getItem('bh_token');
+  if (t) { document.getElementById('tokenInput').value = t; document.getElementById('connStatus').textContent = '✓ Token読込済'; }
+};
+function showAlert(msg, type, targetId) {
+  const el = targetId ? document.getElementById(targetId) : null;
+  if (el && targetId === 'connStatus') { el.textContent = msg; el.style.color = type === 'ok' ? 'var(--success)' : 'var(--danger)'; return; }
+  const main = document.getElementById('mainArea');
+  const cls = type === 'ok' ? 'a-ok' : type === 'err' ? 'a-err' : 'a-info';
+  const div = document.createElement('div');
+  div.className = `alert ${cls}`;
+  div.textContent = msg;
+  main.insertBefore(div, main.firstChild);
+  setTimeout(() => div.remove(), 4000);
+}
+
+// ─── Auth Header ─────────────────────────────────────────
+function authHeaders() {
+  return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json', 'Accept': 'application/json' };
+}
+
+// ─── GET Prize List ──────────────────────────────────────
+async function loadPrizes() {
+  const token = getToken();
+  if (!token) { alert('Bearer Tokenを入力してください'); return; }
+  currentPage = 1;
+  loadPrizeFilter();
+  loadLicensors();
+  await fetchPrizes();
+}
+
+async function fetchPrizes() {
+  const mode = document.getElementById('filterMode').value;
+  const status = document.getElementById('filterStatus').value;
+  const type = document.getElementById('filterType').value;
+  const licensor = document.getElementById('filterLicensor')?.value || '';
+  const limit = document.getElementById('filterLimit').value || 20;
+  let url = `${API}/prizes?page=${currentPage}&limit=${limit}`;
+  if (mode) url += `&mode_type=${mode}`;
+  if (status) url += `&status=${status}`;
+  if (type) url += `&prize_type_ids=${type}`;
+  if (licensor) url += `&licensor_ids=${licensor}`;
+
+  document.getElementById('prizeList').innerHTML = '<div class="loading"><div class="spin"></div> 読み込み中...</div>';
+  document.getElementById('pager').style.display = 'none';
+
+  try {
+    const res = await fetch(url, { headers: authHeaders() });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'APIエラー');
+    allPrizes = json.data.records || [];
+    totalPages = json.data.total_page || 1;
+    document.getElementById('connStatus').textContent = `✓ ${json.data.total}件`;
+    document.getElementById('connStatus').style.color = 'var(--success)';
+    renderList();
+    updatePager();
+  } catch (e) {
+    document.getElementById('prizeList').innerHTML = `<div class="empty"><div class="ico">⚠️</div><p>${e.message}</p></div>`;
+    document.getElementById('connStatus').textContent = '✗ エラー';
+    document.getElementById('connStatus').style.color = 'var(--danger)';
+  }
+}
+
+function renderList() {
+  const nameQ = (document.getElementById('filterName')?.value || '').trim().toLowerCase();
+  let prizes = nameQ
+    ? allPrizes.filter(p => {
+        const jp = (p.name?.JP?.content || '').toLowerCase();
+        const en = (p.name?.EN?.content || '').toLowerCase();
+        return jp.includes(nameQ) || en.includes(nameQ);
+      })
+    : allPrizes;
+
+  if (!prizes.length) {
+    document.getElementById('prizeList').innerHTML = '<div class="empty"><div class="ico">🔍</div><p>該当プライズなし</p></div>';
+    return;
+  }
+
+  document.getElementById('prizeList').innerHTML = prizes.map(p => {
+    const jpName = p.name?.JP?.content || p.name?.EN?.content || '(名称なし)';
+    const isSel = p.id === selectedId ? ' sel' : '';
+    const isBulk = selectedPrizeIds.has(p.id) ? ' bulk-sel' : '';
+    const isChecked = selectedPrizeIds.has(p.id) ? 'checked' : '';
+    const thumb = p.image_url
+      ? `<img class="prize-thumb" src="${p.image_url}" onerror="this.style.display='none'" loading="lazy">`
+      : `<div class="prize-thumb-ph">🏆</div>`;
+    return `<div class="prize-item${isSel}${isBulk}" onclick="loadDetail('${p.id}')">
+      <input type="checkbox" class="prize-cb" ${isChecked} onclick="togglePrizeSelect('${p.id}',event)">
+      ${thumb}
+      <div class="pi-info">
+        <div class="pi-name">${escHtml(jpName)}</div>
+        <div class="pi-sub">
+          <span class="badge ${p.status==='ACTIVE'?'b-act':'b-ina'}">${p.status}</span>
+          <span class="badge b-typ">${p.prize_type}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterList() { renderList(); }
+
+function toggleFilters() {
+  const el = document.getElementById('sbFilters');
+  const chevron = document.getElementById('filterChevron');
+  const collapsed = el.style.display === 'none';
+  el.style.display = collapsed ? '' : 'none';
+  chevron.textContent = collapsed ? '▲' : '▼';
+}
+
+function updatePager() {
+  if (totalPages <= 1) { document.getElementById('pager').style.display = 'none'; return; }
+  document.getElementById('pager').style.display = 'flex';
+  document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+  document.getElementById('btnPrev').disabled = currentPage <= 1;
+  document.getElementById('btnNext').disabled = currentPage >= totalPages;
+}
+
+async function changePage(d) {
+  currentPage = Math.max(1, Math.min(totalPages, currentPage + d));
+  await fetchPrizes();
+}
+
+// ─── GET Prize Detail ─────────────────────────────────────
+async function loadDetail(id) {
+  selectedId = id;
+  renderList();
+  document.getElementById('mainArea').innerHTML = '<div class="loading"><div class="spin"></div> 詳細を読み込み中...</div>';
+
+  try {
+    const [prizeRes] = await Promise.all([
+      fetch(`${API}/prizes/${id}`, { headers: authHeaders() }),
+      loadGameplayTypes(),
+      loadPlayFees()
+    ]);
+    const json = await prizeRes.json();
+    if (!json.success) throw new Error(json.message || 'APIエラー');
+    renderDetail(json.data);
+  } catch (e) {
+    document.getElementById('mainArea').innerHTML = `<div class="alert a-err">${e.message}</div>`;
+  }
+}
+
+function renderDetail(d) {
+  const jpName = d.name?.JP?.content || '';
+  const enName = d.name?.EN?.content || '';
+  const jpDesc = d.description?.JP?.content || '';
+  const enDesc = d.description?.EN?.content || '';
+  const img = d.image_url
+    ? `<img class="det-img" src="${d.image_url}" onerror="this.style.display='none'">`
+    : `<div class="det-img-ph">🏆</div>`;
+
+  document.getElementById('mainArea').innerHTML = `
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('edit')">編集</button>
+      <button class="tab" onclick="switchTab('raw')">Raw JSON</button>
+      <button class="tab" onclick="switchTab('debug')">🔬 デバッグ</button>
+    </div>
+
+    <div id="tabEdit">
+      <div class="det-hdr">
+        ${img}
+        <div class="det-meta">
+          <div class="det-id">ID: ${d.id}</div>
+          <div class="det-name">${escHtml(jpName)}</div>
+          <div class="det-badges">
+            <span class="badge ${d.status==='ACTIVE'?'b-act':'b-ina'} badge">${d.status}</span>
+            <span class="badge b-typ">${d.prize_type}</span>
+            ${d.mode_type?`<span class="badge b-typ">${d.mode_type}</span>`:''}
+          </div>
+          <div class="det-actions">
+            <button class="btn btn-s btn-sm" onclick="updatePrize('${d.id}')">💾 保存（PUT）</button>
+            <button class="btn btn-g btn-sm" onclick="toggleStatus('${d.id}','${d.status}')">${d.status==='ACTIVE'?'⏸ 無効化':'▶ 有効化'}</button>
+            <button class="btn btn-d btn-sm" onclick="deletePrize('${d.id}')">🗑 削除</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="editAlert"></div>
+
+      <div class="card">
+        <div class="card-title">基本情報</div>
+        <div class="grid2">
+          <div class="fg">
+            <label>名称（日本語）</label>
+            <input type="text" id="e_nameJP" value="${escHtml(jpName)}">
+          </div>
+          <div class="fg">
+            <label>名称（English）</label>
+            <input type="text" id="e_nameEN" value="${escHtml(enName)}">
+          </div>
+          <div class="fg">
+            <label>プライズタイプ</label>
+            <select id="e_prize_type">${prizeTypeOpts(d.prize_type)}</select>
+          </div>
+          <div class="fg">
+            <label>モードタイプ</label>
+            <select id="e_mode_type">${modeTypeOpts(d.mode_type)}</select>
+          </div>
+          <div class="fg">
+            <label>ステータス</label>
+            <select id="e_status">
+              <option value="ACTIVE" ${d.status==='ACTIVE'?'selected':''}>ACTIVE</option>
+              <option value="NO_ACTIVE" ${d.status==='NO_ACTIVE'?'selected':''}>NO_ACTIVE</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Play Fee</label>
+            <select id="e_play_fee_id">${playFeeOpts(d.play_fee_id)}</select>
+          </div>
+          <div class="fg full">
+            <label>画像URL</label>
+            <input type="text" id="e_image_url" value="${d.image_url||''}">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">説明文</div>
+        <div class="grid2">
+          <div class="fg">
+            <label>説明（日本語）HTML可</label>
+            <textarea id="e_descJP" rows="4">${escHtml(jpDesc)}</textarea>
+          </div>
+          <div class="fg">
+            <label>説明（English）HTML可</label>
+            <textarea id="e_descEN" rows="4">${escHtml(enDesc)}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">在庫・アシスト設定</div>
+        <div class="grid3">
+          <div class="fg">
+            <label>合計アイテム数</label>
+            <input type="number" id="e_total_items" value="${d.total_items??9999}">
+          </div>
+          <div class="fg">
+            <label>Max Booths/Gameplay</label>
+            <input type="number" id="e_max_booths" value="${d.max_booths_per_gameplay??2}">
+          </div>
+          <div class="fg">
+            <label>在庫通知しきい値</label>
+            <input type="number" id="e_stock_notif" value="${d.limit_stock_prize_notification??30}">
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:24px;flex-wrap:wrap;">
+          <div class="tg-wrap">
+            <label class="tg"><input type="checkbox" id="e_assist_gauge" ${d.assist_gauge?'checked':''}><span class="tg-sl"></span></label>
+            <label for="e_assist_gauge">アシストゲージ有効</label>
+          </div>
+          <div class="fg" style="flex-direction:row;align-items:center;gap:10px;">
+            <label style="white-space:nowrap;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">アシスト上限</label>
+            <input type="number" id="e_assist_limit" value="${d.assist_gauge_limit??20}" style="width:80px">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">販売期間</div>
+        <div class="tg-wrap" style="margin-bottom:12px">
+          <label class="tg"><input type="checkbox" id="e_sale_period" ${d.sale_period?'checked':''} onchange="toggleSalePeriod()"><span class="tg-sl"></span></label>
+          <label for="e_sale_period">販売期間を設定する</label>
+        </div>
+        <div id="salePeriodFields" style="${d.sale_period?'':'display:none'}">
+          <div class="grid2">
+            <div class="fg">
+              <label>販売開始日時</label>
+              <input type="datetime-local" id="e_start_sale" value="${toDatetimeLocal(d.start_sale_period)}">
+            </div>
+            <div class="fg">
+              <label>販売終了日時</label>
+              <input type="datetime-local" id="e_end_sale" value="${toDatetimeLocal(d.end_sale_period)}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">その他設定</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+          <div class="tg-wrap">
+            <label class="tg"><input type="checkbox" id="e_allow_sync" ${d.allow_sync?'checked':''}><span class="tg-sl"></span></label>
+            <label for="e_allow_sync">Allow Sync</label>
+          </div>
+          <div class="tg-wrap">
+            <label class="tg"><input type="checkbox" id="e_show_list" ${d.show_in_prize_list?'checked':''}><span class="tg-sl"></span></label>
+            <label for="e_show_list">Prize Listに表示</label>
+          </div>
+          <div class="tg-wrap">
+            <label class="tg"><input type="checkbox" id="e_freeplay" ${d.is_freeplay?'checked':''}><span class="tg-sl"></span></label>
+            <label for="e_freeplay">フリープレイ</label>
+          </div>
+          <div class="tg-wrap">
+            <label class="tg"><input type="checkbox" id="e_reserved_streamer" ${d.reserved_for_streamer?'checked':''}><span class="tg-sl"></span></label>
+            <label for="e_reserved_streamer">ストリーマー専用</label>
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:14px">
+          <div class="fg">
+            <label>Display Mode</label>
+            <select id="e_display_mode">
+              <option value="ALWAYS_VISIBLE" ${d.display_mode==='ALWAYS_VISIBLE'?'selected':''}>ALWAYS_VISIBLE</option>
+              <option value="HIDDEN" ${d.display_mode==='HIDDEN'?'selected':''}>HIDDEN</option>
+              <option value="CONDITIONAL" ${d.display_mode==='CONDITIONAL'?'selected':''}>CONDITIONAL</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Box Level</label>
+            <input type="number" id="e_box_level" value="${d.box_level??0}">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="boothCard">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0;border-bottom:none;padding-bottom:0">
+          <span>ブース設定（Playable Booth Setting Items）</span>
+          <button class="btn btn-p btn-sm" onclick="addBoothItem()">＋ ブース追加</button>
+        </div>
+        <div style="margin-top:12px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--muted)">Gameplay Type は <code style="background:var(--bg);padding:1px 4px;border-radius:3px">GET /api/gameplay-types</code> から取得</span>
+          ${gameplayTypes.length === 0 ? '<span style="font-size:11px;color:var(--warning);margin-left:8px">⚠ Gameplay Types 未読込（Tokenを確認してください）</span>' : `<span style="font-size:11px;color:var(--success);margin-left:8px">✓ ${gameplayTypes.length}件読込済</span>`}
+        </div>
+        <div id="boothList">
+          ${(d.playable_booth_setting_items || []).map((item, i) => boothItemHTML(item, i)).join('')}
+          ${!(d.playable_booth_setting_items?.length) ? '<p style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">ブース設定なし（＋ ブース追加 で追加できます）</p>' : ''}
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-g" onclick="loadDetail('${d.id}')">↺ リセット</button>
+        <button class="btn btn-w" onclick="previewPutBody()">🔍 送信内容を確認</button>
+        <button class="btn btn-g" onclick="debugPutRaw('${d.id}')" title="GETレスポンスをそのままPUT">🧪 生データでPUT</button>
+        <button class="btn btn-g" onclick="debugPutNoBooths('${d.id}')" title="playable_booth_setting_itemsを除いてPUT">🧪 ブースなしPUT</button>
+        <button class="btn btn-s" onclick="updatePrize('${d.id}')">💾 変更を保存（PUT）</button>
+      </div>
+    </div>
+
+    <div id="tabRaw" style="display:none">
+      <div class="card">
+        <div class="card-title">レスポンスデータ（Raw JSON）</div>
+        <div class="raw">${escHtml(JSON.stringify(d, null, 2))}</div>
+      </div>
+    </div>
+
+    <div id="tabDebug" style="display:none">
+      <div class="card">
+        <div class="card-title">🔬 APIデバッグパネル</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">以下のプリセットで順番にPUTを試してください。成功したボディと失敗したボディの差分が原因を示します。</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+          <button class="btn btn-g" onclick="debugPreset('${d.id}','status_only')">① status だけ</button>
+          <button class="btn btn-g" onclick="debugPreset('${d.id}','translate_language')">② translate + language キー</button>
+          <button class="btn btn-g" onclick="debugPreset('${d.id}','translate_lang_key')">③ translate + lang_key キー</button>
+          <button class="btn btn-g" onclick="debugPreset('${d.id}','translations_language')">④ translations(複数形) + language</button>
+          <button class="btn btn-g" onclick="debugPreset('${d.id}','translations_lang_key')">⑤ translations(複数形) + lang_key</button>
+          <button class="btn btn-g" onclick="debugPreset('${d.id}','translate_plus_status')">⑥ translate + status</button>
+        </div>
+        <div style="margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">📝 カスタムJSON（直接入力してPUT）</div>
+          <textarea id="customPutJson" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:#a5f3fc;font-family:monospace;font-size:11px;resize:vertical;min-height:120px" placeholder='{"translate":[{"language":"JP","name":"テスト"}]}'></textarea>
+          <button class="btn btn-p btn-sm" style="margin-top:6px" onclick="debugCustomPut('${d.id}')">▶ このJSONでPUT</button>
+        </div>
+        <div id="debugPresetResult"></div>
+      </div>
+    </div>
+  `;
+
+  window._currentData = d;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tabEdit').style.display = tab === 'edit' ? '' : 'none';
+  document.getElementById('tabRaw').style.display = tab === 'raw' ? '' : 'none';
+  document.getElementById('tabDebug').style.display = tab === 'debug' ? '' : 'none';
+}
+
+// ─── Debug Presets ────────────────────────────────────────
+const DEBUG_PRESETS = {
+  status_only: (d) => ({ status: d.status }),
+  translate_language: (d) => ({
+    translate: [
+      { language: 'JP', name: d.name?.JP?.content || '' },
+      { language: 'EN', name: d.name?.EN?.content || '' }
+    ]
+  }),
+  translate_lang_key: (d) => ({
+    translate: [
+      { lang_key: 'JP', name: d.name?.JP?.content || '' },
+      { lang_key: 'EN', name: d.name?.EN?.content || '' }
+    ]
+  }),
+  translations_language: (d) => ({
+    translations: [
+      { language: 'JP', name: d.name?.JP?.content || '' },
+      { language: 'EN', name: d.name?.EN?.content || '' }
+    ]
+  }),
+  translations_lang_key: (d) => ({
+    name: d.name?.EN?.content || '',
+    translations: [
+      { lang_key: 'EN', name: d.name?.EN?.content || '', description: d.description?.EN?.content || '' },
+      { lang_key: 'JP', name: d.name?.JP?.content || '', description: d.description?.JP?.content || '' }
+    ]
+  }),
+  translate_plus_status: (d) => ({
+    status: d.status,
+    name: d.name?.EN?.content || '',
+    translations: [
+      { lang_key: 'EN', name: d.name?.EN?.content || '', description: d.description?.EN?.content || '' },
+      { lang_key: 'JP', name: d.name?.JP?.content || '', description: d.description?.JP?.content || '' }
+    ]
+  })
+};
+
+async function debugPreset(id, preset) {
+  const body = DEBUG_PRESETS[preset](window._currentData);
+  const resultEl = document.getElementById('debugPresetResult');
+  resultEl.innerHTML = '<div class="alert a-info" style="font-size:12px">⏳ 送信中...</div>';
+  try {
+    const res = await fetch(`${API}/prizes/${id}`, {
+      method: 'PUT', headers: authHeaders(), body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    const ok = json.success;
+    const statusMsg = ok ? '✅ 成功！' : `❌ ${escHtml(JSON.stringify(json.messages))}`;
+    const cls = ok ? 'a-ok' : 'a-err';
+    resultEl.innerHTML = `
+      <div class="alert ${cls}" style="font-size:12px;margin-bottom:8px"><strong>[${preset}]</strong> ${statusMsg}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">📤 送信</div>
+          <div class="raw" style="max-height:150px;font-size:10px">${escHtml(JSON.stringify(body, null, 2))}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">📥 レスポンス</div>
+          <div class="raw" style="max-height:150px;font-size:10px">${escHtml(JSON.stringify(json, null, 2))}</div>
+        </div>
+      </div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div class="alert a-err">通信エラー: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function debugCustomPut(id) {
+  const raw = document.getElementById('customPutJson').value.trim();
+  let body;
+  try { body = JSON.parse(raw); } catch(e) { alert('JSONパースエラー: ' + e.message); return; }
+  const resultEl = document.getElementById('debugPresetResult');
+  resultEl.innerHTML = '<div class="alert a-info" style="font-size:12px">⏳ カスタムJSON送信中...</div>';
+  try {
+    const res = await fetch(`${API}/prizes/${id}`, {
+      method: 'PUT', headers: authHeaders(), body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    const ok = json.success;
+    resultEl.innerHTML = `
+      <div class="alert ${ok?'a-ok':'a-err'}" style="font-size:12px;margin-bottom:8px">${ok ? '✅ 成功！' : `❌ ${escHtml(JSON.stringify(json.messages))}`}</div>
+      <div class="raw" style="max-height:200px;font-size:10px">${escHtml(JSON.stringify(json, null, 2))}</div>`;
+  } catch(e) {
+    resultEl.innerHTML = `<div class="alert a-err">通信エラー: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function debugPutRaw(id) {
+  const body = window._currentData;
+  await _debugPut(id, body, '🧪 生データ（GETレスポンスそのまま）でPUT');
+}
+
+async function debugPutNoBooths(id) {
+  const body = buildPrizeBody();
+  delete body.playable_booth_setting_items;
+  await _debugPut(id, body, '🧪 playable_booth_setting_items を除外してPUT');
+}
+
+async function _debugPut(id, body, label) {
+  const alertEl = document.getElementById('editAlert');
+  const bodyStr = JSON.stringify(body, null, 2);
+  alertEl.innerHTML = `<div class="alert a-info">⏳ ${escHtml(label)} 送信中...</div>`;
+  try {
+    const res = await fetch(`${API}/prizes/${id}`, {
+      method: 'PUT', headers: authHeaders(), body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    const cls = json.success ? 'a-ok' : 'a-err';
+    const status = json.success ? '✅ 成功' : `❌ エラー: ${escHtml(JSON.stringify(json.messages))}`;
+    alertEl.innerHTML = `
+      <div class="alert ${cls}" style="margin-bottom:8px">${status}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">📤 送信した BODY</div>
+          <div class="raw" style="max-height:250px">${escHtml(bodyStr)}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">📥 API RESPONSE</div>
+          <div class="raw" style="max-height:250px">${escHtml(JSON.stringify(json, null, 2))}</div>
+        </div>
+      </div>`;
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert a-err">❌ 通信エラー: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function previewPutBody() {
+  const body = buildPrizeBody();
+  const alertEl = document.getElementById('editAlert');
+  alertEl.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">🔍 送信予定の REQUEST BODY（PUT）</div>
+    <div class="raw" style="max-height:350px">${escHtml(JSON.stringify(body, null, 2))}</div>`;
+  alertEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function toggleSalePeriod() {
+  const checked = document.getElementById('e_sale_period').checked;
+  document.getElementById('salePeriodFields').style.display = checked ? '' : 'none';
+}
+
+// ─── PUT Update Prize ─────────────────────────────────────
+async function updatePrize(id) {
+  const body = buildPrizeBody();
+  const alertEl = document.getElementById('editAlert');
+  alertEl.innerHTML = '<div class="alert a-info">⏳ 送信中...</div>';
+
+  const requestBodyStr = JSON.stringify(body, null, 2);
+  let rawResponse = null;
+
+  try {
+    const res = await fetch(`${API}/prizes/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    rawResponse = json;
+    if (!json.success) {
+      const errMsg = json.message || JSON.stringify(json.messages);
+      alertEl.innerHTML = `
+        <div class="alert a-err" style="margin-bottom:8px">❌ エラー: ${escHtml(errMsg)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">📤 送信した REQUEST BODY</div>
+            <div class="raw" style="max-height:200px">${escHtml(requestBodyStr)}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">📥 API RESPONSE（生）</div>
+            <div class="raw" style="max-height:200px">${escHtml(JSON.stringify(json, null, 2))}</div>
+          </div>
+        </div>`;
+      return;
+    }
+    alertEl.innerHTML = '<div class="alert a-ok">✅ 保存しました</div>';
+    setTimeout(() => { alertEl.innerHTML = ''; loadDetail(id); }, 2000);
+    loadPrizes();
+  } catch (e) {
+    alertEl.innerHTML = `
+      <div class="alert a-err" style="margin-bottom:8px">❌ 通信エラー: ${escHtml(e.message)}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">📤 送信しようとした REQUEST BODY</div>
+      <div class="raw" style="max-height:200px">${escHtml(requestBodyStr)}</div>`;
+  }
+}
+
+// ─── POST Toggle Status ───────────────────────────────────
+async function toggleStatus(id, currentStatus) {
+  const newStatus = currentStatus === 'ACTIVE' ? 'NO_ACTIVE' : 'ACTIVE';
+  if (!confirm(`ステータスを ${newStatus} に変更しますか？`)) return;
+
+  const statusEl = document.getElementById('e_status');
+  if (statusEl) statusEl.value = newStatus;
+  const body = buildPrizeBody();
+
+  try {
+    const res = await fetch(`${API}/prizes/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || JSON.stringify(json.messages));
+    loadDetail(id);
+    loadPrizes();
+  } catch (e) {
+    alert('エラー: ' + e.message);
+  }
+}
+
+// ─── DELETE Prize ─────────────────────────────────────────
+async function deletePrize(id) {
+  if (!confirm(`プライズ ID: ${id} を削除しますか？この操作は取り消せません。`)) return;
+  try {
+    const res = await fetch(`${API}/prizes/${id}`, { method: 'DELETE', headers: authHeaders() });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'エラー');
+    document.getElementById('mainArea').innerHTML = '<div class="alert a-ok" style="margin:20px">✅ 削除しました</div>';
+    selectedId = null;
+    loadPrizes();
+  } catch (e) {
+    alert('削除エラー: ' + e.message);
+  }
+}
+
+// ─── Create Prize Form ────────────────────────────────────
+async function showCreate() {
+  selectedId = null;
+  renderList();
+  await Promise.all([loadPlayFees(), loadGameplayTypes()]);
+  document.getElementById('mainArea').innerHTML = `
+    <div class="tabs">
+      <button class="tab active">新規プライズ作成</button>
+    </div>
+
+    <div id="createAlert"></div>
+
+    <div class="card">
+      <div class="card-title">基本情報</div>
+      <div class="grid2">
+        <div class="fg">
+          <label>名称（日本語）<span style="color:var(--danger)">*</span></label>
+          <input type="text" id="c_nameJP" placeholder="例: 果てなき白銀の世界">
+        </div>
+        <div class="fg">
+          <label>名称（English）<span style="color:var(--danger)">*</span></label>
+          <input type="text" id="c_nameEN" placeholder="The Endless White Realm">
+        </div>
+        <div class="fg">
+          <label>プライズタイプ <span style="color:var(--danger)">*</span></label>
+          <select id="c_prize_type">${prizeTypeOpts('AR_STAGE')}</select>
+        </div>
+        <div class="fg">
+          <label>モードタイプ</label>
+          <select id="c_mode_type">${modeTypeOpts('PVE_SINGLE_PLAY')}</select>
+        </div>
+        <div class="fg">
+          <label>ステータス</label>
+          <select id="c_status">
+            <option value="NO_ACTIVE" selected>NO_ACTIVE</option>
+            <option value="ACTIVE">ACTIVE</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Play Fee</label>
+          <select id="c_play_fee_id">${playFeeOpts('')}</select>
+        </div>
+        <div class="fg full">
+          <label>画像URL</label>
+          <input type="text" id="c_image_url" placeholder="https://...">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">説明文</div>
+      <div class="grid2">
+        <div class="fg">
+          <label>説明（日本語）HTML可</label>
+          <textarea id="c_descJP" rows="4" placeholder="<p>説明文...</p>"></textarea>
+        </div>
+        <div class="fg">
+          <label>説明（English）HTML可</label>
+          <textarea id="c_descEN" rows="4" placeholder="<p>Description...</p>"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">在庫・アシスト設定</div>
+      <div class="grid3">
+        <div class="fg">
+          <label>合計アイテム数</label>
+          <input type="number" id="c_total_items" value="9999">
+        </div>
+        <div class="fg">
+          <label>Max Booths/Gameplay</label>
+          <input type="number" id="c_max_booths" value="2">
+        </div>
+        <div class="fg">
+          <label>在庫通知しきい値</label>
+          <input type="number" id="c_stock_notif" value="30">
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:24px;flex-wrap:wrap;">
+        <div class="tg-wrap">
+          <label class="tg"><input type="checkbox" id="c_assist_gauge" checked><span class="tg-sl"></span></label>
+          <label for="c_assist_gauge">アシストゲージ有効</label>
+        </div>
+        <div class="fg" style="flex-direction:row;align-items:center;gap:10px;">
+          <label style="white-space:nowrap;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">アシスト上限</label>
+          <input type="number" id="c_assist_limit" value="20" style="width:80px">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">販売期間</div>
+      <div class="tg-wrap" style="margin-bottom:12px">
+        <label class="tg"><input type="checkbox" id="c_sale_period" onchange="toggleSalePeriodCreate()"><span class="tg-sl"></span></label>
+        <label for="c_sale_period">販売期間を設定する</label>
+      </div>
+      <div id="cSalePeriodFields" style="display:none">
+        <div class="grid2">
+          <div class="fg">
+            <label>販売開始日時</label>
+            <input type="datetime-local" id="c_start_sale">
+          </div>
+          <div class="fg">
+            <label>販売終了日時</label>
+            <input type="datetime-local" id="c_end_sale">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">その他設定</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <div class="tg-wrap">
+          <label class="tg"><input type="checkbox" id="c_allow_sync" checked><span class="tg-sl"></span></label>
+          <label for="c_allow_sync">Allow Sync</label>
+        </div>
+        <div class="tg-wrap">
+          <label class="tg"><input type="checkbox" id="c_show_list" checked><span class="tg-sl"></span></label>
+          <label for="c_show_list">Prize Listに表示</label>
+        </div>
+        <div class="tg-wrap">
+          <label class="tg"><input type="checkbox" id="c_freeplay"><span class="tg-sl"></span></label>
+          <label for="c_freeplay">フリープレイ</label>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="fg">
+          <label>Display Mode</label>
+          <select id="c_display_mode">
+            <option value="ALWAYS_VISIBLE" selected>ALWAYS_VISIBLE</option>
+            <option value="HIDDEN">HIDDEN</option>
+            <option value="CONDITIONAL">CONDITIONAL</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Box Level</label>
+          <input type="number" id="c_box_level" value="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">送信プレビュー</div>
+      <button class="btn btn-g btn-sm" onclick="previewBody()">JSON プレビュー</button>
+      <div id="previewBox" style="margin-top:10px"></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-g" onclick="showCreate()">↺ リセット</button>
+      <button class="btn btn-p" onclick="createPrize()">＋ 新規作成（POST）</button>
+    </div>
+  `;
+}
+
+function toggleSalePeriodCreate() {
+  const checked = document.getElementById('c_sale_period').checked;
+  document.getElementById('cSalePeriodFields').style.display = checked ? '' : 'none';
+}
+
+function previewBody() {
+  const body = buildCreateBody();
+  document.getElementById('previewBox').innerHTML = `<div class="raw">${escHtml(JSON.stringify(body, null, 2))}</div>`;
+}
+
+// ─── POST Create Prize ────────────────────────────────────
+async function createPrize() {
+  const nameJP = document.getElementById('c_nameJP').value.trim();
+  const nameEN = document.getElementById('c_nameEN').value.trim();
+  if (!nameJP || !nameEN) { alert('名称（日本語・英語）を入力してください'); return; }
+
+  const body = buildCreateBody();
+  const alertEl = document.getElementById('createAlert');
+  alertEl.innerHTML = '<div class="alert a-info">⏳ 送信中...</div>';
+
+  try {
+    const res = await fetch(`${API}/prizes`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || JSON.stringify(json.messages));
+    alertEl.innerHTML = `<div class="alert a-ok">✅ 作成しました (ID: ${json.data?.id || '?'})</div>`;
+    loadPrizes();
+    if (json.data?.id) setTimeout(() => loadDetail(json.data.id), 1500);
+  } catch (e) {
+    alertEl.innerHTML = `<div class="alert a-err">❌ エラー: ${escHtml(e.message)}</div>`;
+  }
+}
+
+// ─── Body Builders ────────────────────────────────────────
+function buildTranslations(jpName, enName, jpDesc, enDesc) {
+  return [
+    { lang_key: 'EN', name: enName, description: enDesc },
+    { lang_key: 'JP', name: jpName, description: jpDesc }
+  ];
+}
+
+function buildPrizeBody() {
+  const salePeriod = document.getElementById('e_sale_period').checked;
+  const enName = document.getElementById('e_nameEN').value;
+  const d = window._currentData || {};
+  const pi = d.prize_items?.[0];
+  return {
+    name: enName,
+    translations: buildTranslations(
+      document.getElementById('e_nameJP').value,
+      enName,
+      document.getElementById('e_descJP').value,
+      document.getElementById('e_descEN').value
+    ),
+    prize_type: document.getElementById('e_prize_type').value,
+    mode_type: document.getElementById('e_mode_type').value || null,
+    chain_id: d.chain_id ?? null,
+    play_fee_id: document.getElementById('e_play_fee_id').value || null,
+    image_url: document.getElementById('e_image_url').value || null,
+    image_chromakey_url_front: d.image_chromakey_url_front ?? null,
+    image_chromakey_url_back: d.image_chromakey_url_back ?? null,
+    additional_image_urls: d.additional_image_urls ?? [],
+    status: document.getElementById('e_status').value,
+    total_items: parseInt(document.getElementById('e_total_items').value) || 9999,
+    assist_gauge: document.getElementById('e_assist_gauge').checked,
+    assist_gauge_limit: parseInt(document.getElementById('e_assist_limit').value) || null,
+    limit_stock_prize_notification: parseInt(document.getElementById('e_stock_notif').value) || 30,
+    max_booths_per_gameplay: parseInt(document.getElementById('e_max_booths').value) || 2,
+    sale_period: salePeriod,
+    start_sale_period: salePeriod ? (document.getElementById('e_start_sale').value || null) : null,
+    end_sale_period: salePeriod ? (document.getElementById('e_end_sale').value || null) : null,
+    allow_sync: document.getElementById('e_allow_sync').checked,
+    show_in_prize_list: document.getElementById('e_show_list').checked,
+    is_freeplay: document.getElementById('e_freeplay').checked,
+    reserved_for_streamer: document.getElementById('e_reserved_streamer').checked,
+    enable_copy_trade_ticket: d.enable_copy_trade_ticket ?? false,
+    display_mode: document.getElementById('e_display_mode').value,
+    display_order: d.display_order ?? 0,
+    box_level: parseInt(document.getElementById('e_box_level').value) || null,
+    for_ticket_hololive: d.for_ticket_hololive ?? false,
+    allow_charge_free_ticket: d.allow_charge_free_ticket ?? false,
+    prize_required_ids: [],
+    ...(pi ? { prize_item: { item_related_id: pi.item_related_id, item_related_trait: pi.item_related_trait ?? null } } : {}),
+    ...boothPayload()
+  };
+}
+
+function boothPayload() {
+  const items = collectBoothItems();
+  return items !== undefined ? { playable_booth_setting_items: items } : {};
+}
+
+function buildCreateBody() {
+  const salePeriod = document.getElementById('c_sale_period').checked;
+  const enName = document.getElementById('c_nameEN').value;
+  return {
+    name: enName,
+    translations: buildTranslations(
+      document.getElementById('c_nameJP').value,
+      enName,
+      document.getElementById('c_descJP').value,
+      document.getElementById('c_descEN').value
+    ),
+    prize_type: document.getElementById('c_prize_type').value,
+    mode_type: document.getElementById('c_mode_type').value || null,
+    play_fee_id: document.getElementById('c_play_fee_id').value || null,
+    image_url: document.getElementById('c_image_url').value || null,
+    status: document.getElementById('c_status').value,
+    total_items: parseInt(document.getElementById('c_total_items').value) || 9999,
+    assist_gauge: document.getElementById('c_assist_gauge').checked,
+    assist_gauge_limit: parseInt(document.getElementById('c_assist_limit').value) || null,
+    limit_stock_prize_notification: parseInt(document.getElementById('c_stock_notif').value) || 30,
+    max_booths_per_gameplay: parseInt(document.getElementById('c_max_booths').value) || 2,
+    sale_period: salePeriod,
+    start_sale_period: salePeriod ? (document.getElementById('c_start_sale').value || null) : null,
+    end_sale_period: salePeriod ? (document.getElementById('c_end_sale').value || null) : null,
+    allow_sync: document.getElementById('c_allow_sync').checked,
+    show_in_prize_list: document.getElementById('c_show_list').checked,
+    is_freeplay: document.getElementById('c_freeplay').checked,
+    display_mode: document.getElementById('c_display_mode').value,
+    box_level: parseInt(document.getElementById('c_box_level').value) || null,
+    for_ticket_hololive: false,
+    allow_charge_free_ticket: false,
+    prize_required_ids: []
+  };
+}
+
+// ─── Booth Item Helpers ───────────────────────────────────
+let boothCounter = 0;
+
+function boothItemHTML(item, idx) {
+  const id = item?.id || '';
+  const gtId = item?.gameplay_type_id || '';
+  const feeId = item?.play_fee_id || '';
+  const turn = item?.turn_each_player ?? 1;
+  const life = item?.life_gauge_consumption ?? 1;
+  const mtype = item?.machine_type || 'TWO_CLAWS';
+  const streamer = item?.reserved_for_streamer || false;
+  const copyTrade = item?.enable_copy_trade_ticket || false;
+  const n = ++boothCounter;
+
+  const gt = gameplayTypes.find(g => g.id === gtId);
+  const gtLabel = gt ? `${gt.name} (${gt.machine_type})` : gtId;
+
+  return `<div class="booth-item" data-booth-idx="${n}">
+    <div class="booth-hdr">
+      <span class="booth-num">ブース #${idx + 1}</span>
+      <button class="btn btn-d btn-sm" onclick="removeBoothItem(this)">✕ 削除</button>
+    </div>
+    <input type="hidden" class="bi-id" value="${escHtml(id)}">
+    <div class="grid2" style="gap:10px">
+      <div class="fg full">
+        <label>Gameplay Type <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">${gt ? `— ${gtLabel}` : ''}</span></label>
+        <select class="bi-gt" onchange="onBoothGTChange(this)">
+          ${gameplayTypeOpts(gtId)}
+        </select>
+      </div>
+      <div class="fg full">
+        <label>Play Fee</label>
+        <select class="bi-fee">${playFeeOpts(feeId)}</select>
+      </div>
+      <div class="fg">
+        <label>Mode Name（JP）</label>
+        <input type="text" class="bi-mode-jp" value="${escHtml(item?.mode_name?.JP?.content || '')}" placeholder="例: 通常モード">
+      </div>
+      <div class="fg">
+        <label>Mode Name（EN）</label>
+        <input type="text" class="bi-mode-en" value="${escHtml(item?.mode_name?.EN?.content || '')}" placeholder="e.g. Normal Mode">
+      </div>
+      <div class="fg">
+        <label>Turn Each Player</label>
+        <input type="number" class="bi-turn" value="${turn}" min="1">
+      </div>
+      <div class="fg">
+        <label>Life Gauge Consumption</label>
+        <input type="number" class="bi-life" value="${life}" min="1">
+      </div>
+      <div class="fg">
+        <label>Machine Type</label>
+        <select class="bi-mtype">${machineTypeOpts(mtype)}</select>
+      </div>
+      <div class="fg" style="justify-content:flex-end">
+        <label style="margin-bottom:6px">オプション</label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div class="tg-wrap" style="padding:0">
+            <label class="tg"><input type="checkbox" class="bi-streamer" ${streamer?'checked':''}><span class="tg-sl"></span></label>
+            <label style="font-size:12px">Streamer専用</label>
+          </div>
+          <div class="tg-wrap" style="padding:0">
+            <label class="tg"><input type="checkbox" class="bi-copytrade" ${copyTrade?'checked':''}><span class="tg-sl"></span></label>
+            <label style="font-size:12px">Copy Trade Ticket</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function gameplayTypeOpts(selId) {
+  const blank = `<option value="">── Gameplay Type を選択 ──</option>`;
+  const opts = gameplayTypes.map(g => {
+    const jpTrans = g.translations?.find(t => t.lang_key === 'JP');
+    const label = jpTrans ? `${jpTrans.name} / ${g.name} [${g.machine_type}]` : `${g.name} [${g.machine_type}]`;
+    return `<option value="${g.id}" ${g.id === selId ? 'selected' : ''}>${escHtml(label)}</option>`;
+  });
+  return blank + opts.join('');
+}
+
+function machineTypeOpts(sel) {
+  return ['TWO_CLAWS','THREE_CLAWS'].map(m =>
+    `<option value="${m}" ${m===sel?'selected':''}>${m}</option>`
+  ).join('');
+}
+
+function onBoothGTChange(sel) {
+  const gt = gameplayTypes.find(g => g.id === sel.value);
+  if (!gt) return;
+  const row = sel.closest('.booth-item');
+  const mtypeEl = row.querySelector('.bi-mtype');
+  if (mtypeEl) {
+    Array.from(mtypeEl.options).forEach(o => { o.selected = o.value === gt.machine_type; });
+  }
+}
+
+function addBoothItem() {
+  const list = document.getElementById('boothList');
+  const existing = list.querySelectorAll('.booth-item');
+  const idx = existing.length;
+  const p = list.querySelector('p');
+  if (p) p.remove();
+  const div = document.createElement('div');
+  div.innerHTML = boothItemHTML(null, idx);
+  list.appendChild(div.firstElementChild);
+}
+
+function removeBoothItem(btn) {
+  const item = btn.closest('.booth-item');
+  item.remove();
+  // Re-number
+  document.querySelectorAll('#boothList .booth-num').forEach((el, i) => {
+    el.textContent = `ブース #${i + 1}`;
+  });
+}
+
+function collectBoothItems() {
+  const list = document.getElementById('boothList');
+  if (!list) return undefined;
+  return Array.from(list.querySelectorAll('.booth-item')).map(row => {
+    const id = row.querySelector('.bi-id')?.value || undefined;
+    const jpMode = row.querySelector('.bi-mode-jp')?.value.trim() || '';
+    const enMode = row.querySelector('.bi-mode-en')?.value.trim() || '';
+    return {
+      ...(id ? { id } : {}),
+      translations: (jpMode || enMode) ? [
+        { lang_key: 'EN', mode_name: enMode },
+        { lang_key: 'JP', mode_name: jpMode }
+      ] : null,
+      gameplay_type_id: row.querySelector('.bi-gt')?.value || null,
+      play_fee_id: row.querySelector('.bi-fee')?.value || null,
+      turn_each_player: parseInt(row.querySelector('.bi-turn')?.value) || 1,
+      life_gauge_consumption: parseInt(row.querySelector('.bi-life')?.value) || 1,
+      machine_type: row.querySelector('.bi-mtype')?.value || 'TWO_CLAWS',
+      reserved_for_streamer: row.querySelector('.bi-streamer')?.checked || false,
+      enable_copy_trade_ticket: row.querySelector('.bi-copytrade')?.checked || false
+    };
+  });
+}
+
+// ─── Bulk Select ─────────────────────────────────────────
+function togglePrizeSelect(id, event) {
+  event.stopPropagation();
+  if (selectedPrizeIds.has(id)) {
+    selectedPrizeIds.delete(id);
+  } else {
+    selectedPrizeIds.add(id);
+  }
+  event.target.closest('.prize-item').classList.toggle('bulk-sel', selectedPrizeIds.has(id));
+  updateBulkBanner();
+}
+
+function updateBulkBanner() {
+  const n = selectedPrizeIds.size;
+  const banner = document.getElementById('bulkBanner');
+  if (n === 0) {
+    banner.style.display = 'none';
+  } else {
+    banner.style.display = '';
+    document.getElementById('bulkCount').textContent = `${n}件選択中`;
+  }
+}
+
+function clearBulkSelection() {
+  selectedPrizeIds.clear();
+  updateBulkBanner();
+  renderList();
+}
+
+// ─── Bulk Booth Edit ──────────────────────────────────────
+async function showBulkBoothEdit() {
+  const ids = [...selectedPrizeIds];
+  if (ids.length === 0) return;
+  await Promise.all([loadGameplayTypes(), loadPlayFees()]);
+  boothCounter = 0;
+
+  const prizeRows = ids.map(id => {
+    const p = allPrizes.find(x => x.id === id);
+    const name = p?.name?.JP?.content || p?.name?.EN?.content || id;
+    return `<div class="bulk-result-row">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(name)}</span>
+      <span id="bst_${id}" style="color:var(--muted);font-size:11px;flex-shrink:0">待機中</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('mainArea').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div style="font-size:17px;font-weight:800;color:var(--accent)">ブース一括編集</div>
+      <span style="font-size:12px;color:var(--muted)">${ids.length}件のプライズを対象</span>
+      <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="clearBulkSelection()">✕ キャンセル</button>
+    </div>
+
+    <div id="bulkAlert"></div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0;border-bottom:none;padding-bottom:0">
+        <span>対象プライズ（${ids.length}件）</span>
+        <button class="btn btn-g btn-sm" onclick="toggleEl('bulkPrizeList')">折りたたむ</button>
+      </div>
+      <div id="bulkPrizeList" style="margin-top:10px">${prizeRows}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0;border-bottom:none;padding-bottom:0">
+        <span>新しいブース設定</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-g btn-sm" onclick="loadFirstPrizeBooths()">📥 最初のプライズから読込</button>
+          <button class="btn btn-p btn-sm" onclick="addBulkBoothItem()">＋ ブース追加</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        ここで設定したブース構成が選択中の全プライズに上書き適用されます。既存のブース設定は完全に置き換えられます。
+      </p>
+      <div id="bulkBoothList">
+        <p style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">＋ ブース追加 で追加するか、「最初のプライズから読込」を押してください</p>
+      </div>
+    </div>
+
+    <div id="bulkProgress" class="card" style="display:none">
+      <div class="card-title">適用進捗</div>
+      <div style="height:8px;background:var(--border);border-radius:4px;margin-bottom:10px">
+        <div id="bulkProgressFill" style="height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width 0.3s"></div>
+      </div>
+      <div id="bulkProgressStatus" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+      <div id="bulkResultList"></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-g" onclick="clearBulkSelection()">✕ キャンセル</button>
+      <button class="btn btn-s" id="btnBulkApply" onclick="bulkApplyBooths()">💾 ${ids.length}件すべてに適用</button>
+    </div>
+  `;
+  window._bulkIds = ids;
+}
+
+function toggleEl(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+function addBulkBoothItem() {
+  const list = document.getElementById('bulkBoothList');
+  const existing = list.querySelectorAll('.booth-item');
+  const p = list.querySelector('p');
+  if (p) p.remove();
+  const div = document.createElement('div');
+  div.innerHTML = boothItemHTML(null, existing.length);
+  list.appendChild(div.firstElementChild);
+}
+
+async function loadFirstPrizeBooths() {
+  const ids = window._bulkIds;
+  if (!ids?.length) return;
+  try {
+    const res = await fetch(`${API}/prizes/${ids[0]}`, { headers: authHeaders() });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message);
+    const items = json.data.playable_booth_setting_items || [];
+    const list = document.getElementById('bulkBoothList');
+    list.innerHTML = '';
+    boothCounter = 0;
+    if (!items.length) {
+      list.innerHTML = '<p style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">このプライズにはブース設定がありません</p>';
+      return;
+    }
+    items.forEach((item, i) => {
+      const itemNoId = { ...item };
+      delete itemNoId.id;
+      const div = document.createElement('div');
+      div.innerHTML = boothItemHTML(itemNoId, i);
+      list.appendChild(div.firstElementChild);
+    });
+  } catch(e) { alert('読み込みエラー: ' + e.message); }
+}
+
+function collectBulkBoothItems() {
+  const list = document.getElementById('bulkBoothList');
+  if (!list) return [];
+  return Array.from(list.querySelectorAll('.booth-item')).map(row => {
+    const jpMode = row.querySelector('.bi-mode-jp')?.value.trim() || '';
+    const enMode = row.querySelector('.bi-mode-en')?.value.trim() || '';
+    return {
+      translations: (jpMode || enMode) ? [
+        { lang_key: 'EN', mode_name: enMode },
+        { lang_key: 'JP', mode_name: jpMode }
+      ] : null,
+      gameplay_type_id: row.querySelector('.bi-gt')?.value || null,
+      play_fee_id: row.querySelector('.bi-fee')?.value || null,
+      turn_each_player: parseInt(row.querySelector('.bi-turn')?.value) || 1,
+      life_gauge_consumption: parseInt(row.querySelector('.bi-life')?.value) || 1,
+      machine_type: row.querySelector('.bi-mtype')?.value || 'TWO_CLAWS',
+      reserved_for_streamer: row.querySelector('.bi-streamer')?.checked || false,
+      enable_copy_trade_ticket: row.querySelector('.bi-copytrade')?.checked || false
+    };
+  });
+}
+
+function buildBodyFromData(d, boothItems) {
+  const pi = d.prize_items?.[0];
+  return {
+    name: d.name?.EN?.content || '',
+    translations: buildTranslations(
+      d.name?.JP?.content || '', d.name?.EN?.content || '',
+      d.description?.JP?.content || '', d.description?.EN?.content || ''
+    ),
+    prize_type: d.prize_type,
+    mode_type: d.mode_type || null,
+    chain_id: d.chain_id ?? null,
+    play_fee_id: d.play_fee_id || null,
+    image_url: d.image_url || null,
+    image_chromakey_url_front: d.image_chromakey_url_front ?? null,
+    image_chromakey_url_back: d.image_chromakey_url_back ?? null,
+    additional_image_urls: d.additional_image_urls ?? [],
+    status: d.status,
+    total_items: d.total_items ?? 9999,
+    assist_gauge: d.assist_gauge ?? false,
+    assist_gauge_limit: d.assist_gauge_limit ?? null,
+    limit_stock_prize_notification: d.limit_stock_prize_notification ?? 30,
+    max_booths_per_gameplay: d.max_booths_per_gameplay ?? 2,
+    sale_period: d.sale_period ?? false,
+    start_sale_period: d.start_sale_period ?? null,
+    end_sale_period: d.end_sale_period ?? null,
+    allow_sync: d.allow_sync ?? false,
+    show_in_prize_list: d.show_in_prize_list ?? true,
+    is_freeplay: d.is_freeplay ?? false,
+    reserved_for_streamer: d.reserved_for_streamer ?? false,
+    enable_copy_trade_ticket: d.enable_copy_trade_ticket ?? false,
+    display_mode: d.display_mode || 'ALWAYS_VISIBLE',
+    display_order: d.display_order ?? 0,
+    box_level: d.box_level ?? null,
+    for_ticket_hololive: d.for_ticket_hololive ?? false,
+    allow_charge_free_ticket: d.allow_charge_free_ticket ?? false,
+    prize_required_ids: d.prize_required_ids ?? [],
+    ...(pi ? { prize_item: { item_related_id: pi.item_related_id, item_related_trait: pi.item_related_trait ?? null } } : {}),
+    playable_booth_setting_items: boothItems
+  };
+}
+
+async function bulkApplyBooths() {
+  const ids = window._bulkIds || [...selectedPrizeIds];
+  if (!ids.length) return;
+  const boothItems = collectBulkBoothItems();
+  if (!confirm(`${ids.length}件のプライズのブース設定を上書きします。よろしいですか？`)) return;
+
+  const btn = document.getElementById('btnBulkApply');
+  if (btn) btn.disabled = true;
+  const progressCard = document.getElementById('bulkProgress');
+  const progressFill = document.getElementById('bulkProgressFill');
+  const progressStatus = document.getElementById('bulkProgressStatus');
+  const resultList = document.getElementById('bulkResultList');
+  progressCard.style.display = '';
+  resultList.innerHTML = '';
+  progressCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  let done = 0, errors = 0;
+  for (const id of ids) {
+    const p = allPrizes.find(x => x.id === id);
+    const name = p?.name?.JP?.content || p?.name?.EN?.content || id;
+    progressStatus.textContent = `処理中: ${escHtml(name)} (${done + 1} / ${ids.length})`;
+    const stEl = document.getElementById(`bst_${id}`);
+    if (stEl) { stEl.textContent = '⏳ 処理中...'; stEl.style.color = 'var(--warning)'; }
+    try {
+      const getRes = await fetch(`${API}/prizes/${id}`, { headers: authHeaders() });
+      const getJson = await getRes.json();
+      if (!getJson.success) throw new Error(getJson.message || 'GET失敗');
+      const body = buildBodyFromData(getJson.data, boothItems);
+      const putRes = await fetch(`${API}/prizes/${id}`, {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify(body)
+      });
+      const putJson = await putRes.json();
+      if (!putJson.success) throw new Error(putJson.message || JSON.stringify(putJson.messages));
+      if (stEl) { stEl.textContent = '✅ 完了'; stEl.style.color = 'var(--success)'; }
+      resultList.innerHTML += `<div class="bulk-result-row"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(name)}</span><span style="color:var(--success);font-size:11px;flex-shrink:0">✅ 完了</span></div>`;
+    } catch(e) {
+      errors++;
+      if (stEl) { stEl.textContent = `❌ ${escHtml(e.message)}`; stEl.style.color = 'var(--danger)'; }
+      resultList.innerHTML += `<div class="bulk-result-row"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(name)}</span><span style="color:var(--danger);font-size:11px;flex-shrink:0">❌ エラー</span></div>`;
+    }
+    done++;
+    progressFill.style.width = `${(done / ids.length) * 100}%`;
+  }
+
+  progressStatus.style.color = errors === 0 ? 'var(--success)' : 'var(--warning)';
+  progressStatus.textContent = `完了: ${done - errors}件成功 / ${errors}件失敗`;
+  if (errors === 0) {
+    clearBulkSelection();
+    loadPrizes();
+  } else {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toDatetimeLocal(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toISOString().slice(0, 16);
+}
+
+function prizeTypeOpts(sel) {
+  const types = ['AR_STAGE','AR_PROP','DIGITAL_FIGURE','NFT_HUNTER','NFT_GAUNTLET','NFT_BOUNTY_BALL','ROOM_ITEM','ROOM_BG','INVITATION_CARD','TREASURE_BOX'];
+  return types.map(t => `<option value="${t}" ${t===sel?'selected':''}>${t}</option>`).join('');
+}
+
+function modeTypeOpts(sel) {
+  const modes = ['','PVE_SINGLE_PLAY','PVE_MULTI_PLAY','PVP','STORY','EVENT','TUTORIAL'];
+  return modes.map(m => `<option value="${m}" ${m===sel?'selected':''}>${m||'(なし)'}</option>`).join('');
+}
+</script>
+</body>
+</html>
