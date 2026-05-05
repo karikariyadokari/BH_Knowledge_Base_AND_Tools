@@ -87,6 +87,20 @@
     .empty-state { text-align: center; padding: 40px; color: #a0aec0; font-size: .9rem; }
     .note { font-size: .76rem; color: #718096; margin-top: 8px; padding: 0 4px; }
 
+    /* アコーディオン */
+    .expandable-row { cursor: pointer; }
+    .expandable-row:hover td { background: #f5f3ff !important; }
+    .expandable-row .rank-cell::before { content: "▶"; color: #cbd5e0; font-size: .6em; margin-right: 4px; vertical-align: middle; }
+    .expandable-row.expanded .rank-cell::before { content: "▼"; color: #667eea; }
+    .detail-row td { padding: 0 !important; background: #f7fafc; border-bottom: 2px solid #e2e8f0; }
+    .detail-content { padding: 12px 16px 16px 48px; }
+    .detail-content h4 { font-size: .78rem; color: #4a5568; font-weight: 700; margin-bottom: 8px; letter-spacing: .3px; }
+    .detail-table { width: auto; min-width: 480px; border-collapse: collapse; font-size: .8rem; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .detail-table th { padding: 7px 12px; background: #edf2f7; color: #4a5568; font-weight: 700; text-align: left; white-space: nowrap; }
+    .detail-table td { padding: 6px 12px; border-bottom: 1px solid #f0f4f8; white-space: nowrap; }
+    .detail-table tr:last-child td { border-bottom: none; }
+    .detail-empty { color: #a0aec0; font-size: .82rem; padding: 8px 0; }
+
     .local-wrap { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 22px; }
     .local-wrap h2 { font-size: 1rem; color: #2d3748; margin-bottom: 10px; }
     .local-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
@@ -151,7 +165,7 @@
   <div id="tab-prizes" class="tab-content">
     <div class="table-wrap">
       <div class="table-header">
-        <h2>プライズ別統計</h2>
+        <h2>プライズ別統計（行クリックで遊び方別内訳を表示）</h2>
         <input class="search-input" type="text" placeholder="プライズ名で検索..."
                oninput="filterTable('prizes-table', this.value)" />
       </div>
@@ -270,19 +284,22 @@
 // =============================================================
 var PARALLEL = 5;  // 並列処理数
 
-var allData   = null;
-var period    = 'daily';
-var anchor    = new Date();
-var sortState = {};
-var running   = false;  // startFullProcess / refreshData 共用フラグ
+var allData          = null;
+var period           = 'daily';
+var anchor           = new Date();
+var sortState        = {};
+var running          = false;  // startFullProcess / refreshData 共用フラグ
+var gameplayTypeMap  = {};   // gameplay_type_id → JP名
+var machineGameplayMap = {};   // machine_id → gameplay_type_id
 
-// LocalStorage から設定を復元
+// LocalStorage から設定を復元し、URL が保存済みなら自動読み込み
 (function() {
   var u = localStorage.getItem('pgp_gasUrl');
   var r = localStorage.getItem('pgp_targetRate');
   if (u) document.getElementById('gas-url').value = u;
   if (r) document.getElementById('target-rate').value = r;
   document.getElementById('tab-local').classList.add('active');
+  if (u) loadData();
 })();
 
 // =============================================================
@@ -341,12 +358,6 @@ async function gasPost_(gasUrl, body) {
   return data;
 }
 
-async function apiGet_(url, token) {
-  var res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
-  var json = await res.json();
-  return json;
-}
-
 // =============================================================
 // キャッシュ表示（Drive の保存済みデータを GAS 経由で取得）
 // =============================================================
@@ -386,24 +397,20 @@ async function refreshData() {
   document.getElementById('local-progress-wrap').style.display = 'block';
 
   try {
-    // ① API 設定取得
     setStatus('loading', 'API 設定を取得中…');
     var cfg = await gasGet_(gasUrl, 'getConfig');
     if (!cfg.apiToken) throw new Error('GAS を最新バージョンで再デプロイしてください');
 
-    // ② UID 取得
     setStatus('loading', 'UID を取得中…');
     var uidRows = await gasGet_(gasUrl, 'getUIDsWithTS');
     var uids    = dedupeUIDs_(uidRows);
 
-    // ③ 既存キャッシュ読み込み
     setProgress(0, uids.length, '既存キャッシュを読み込み中… (' + uids.length + ' UID)');
     var fc = await gasGet_(gasUrl, 'getFullCache');
     var ws = await buildWorkspace_(fc, uids, cfg.prizesApi, cfg.apiToken, function(msg) {
       setProgress(0, uids.length, msg);
-    });
+    }, cfg.gameplayTypesApi, cfg.machinesApi);
 
-    // ④ 差分処理（allPages=false → 新規ゼロページで打ち切り）
     var errors = 0, bi = 0;
     for (; bi < uids.length; bi += PARALLEL) {
       if (!running) break;
@@ -414,13 +421,12 @@ async function refreshData() {
       await Promise.all(batch.map(function(uid) {
         return fetchAllPages_(uid, cfg.historyApiBase, cfg.apiToken, ws.processedRooms, false)
           .then(function(recs) {
-            recs.forEach(function(r) { applyRecord_(r, ws.prizeMap, ws.cache, ws.processedRooms); });
+            recs.forEach(function(r) { applyRecord_(r, ws.prizeMap, ws.cache, ws.processedRooms, gameplayTypeMap); });
           })
           .catch(function(e) { errors++; console.warn('UID', uid, e.message); });
       }));
     }
 
-    // ⑤ Drive に一括保存（1回のみ）
     var done = Math.min(bi, uids.length);
     setProgress(done, uids.length, 'Drive に保存中…');
     ws.cache.processedRoomIds = Array.from(ws.processedRooms);
@@ -456,12 +462,10 @@ async function startFullProcess() {
   document.getElementById('local-progress-wrap').style.display = 'block';
 
   try {
-    // ① API 設定取得
     setProgress(0, 1, 'API 設定を取得中…');
     var cfg = await gasGet_(gasUrl, 'getConfig');
     if (!cfg.apiToken) throw new Error('GAS を最新バージョンで再デプロイしてください');
 
-    // ② booth_log.csv から UID 取得
     setProgress(0, 1, 'booth_log.csv から UID を取得中…');
     var uidRows = await gasGet_(gasUrl, 'getUIDsWithTS');
     var uids    = dedupeUIDs_(uidRows);
@@ -474,7 +478,6 @@ async function startFullProcess() {
     badge.style.display = 'inline-block';
     if (maxTs) document.getElementById('local-ts-range').textContent = '最新: ' + maxTs.slice(0, 10);
 
-    // ③ uid_list.json を Drive に保存
     setProgress(0, uids.length, 'uid_list.json を Drive に保存中…');
     await gasPost_(gasUrl, {
       processedUids:    uids,
@@ -482,16 +485,20 @@ async function startFullProcess() {
       lastUpdated:      new Date().toISOString(),
     });
 
-    // ④ プライズ一覧のみ既存キャッシュから取得（days と processedRooms は必ずリセット）
-    // ※ processedRooms を引き継ぐと前回処理済みレコードを全スキップするため "何も変わらない" になる
-    setProgress(0, uids.length, 'プライズ一覧を取得中…');
+    // days と processedRooms はリセット。prizeList と gameplayTypeList はキャッシュ再利用
+    setProgress(0, uids.length, 'プライズ・遊び方一覧を取得中…');
     var fc = await gasGet_(gasUrl, 'getFullCache');
-    var fcFresh = { days: {}, prizeList: fc.prizeList || [], processedRoomIds: [] };
+    var fcFresh = {
+      days:               {},
+      prizeList:          fc.prizeList          || [],
+      gameplayTypeList:   fc.gameplayTypeList   || [],
+      machineGameplayMap: fc.machineGameplayMap || {},
+      processedRoomIds:   [],
+    };
     var ws = await buildWorkspace_(fcFresh, uids, cfg.prizesApi, cfg.apiToken, function(msg) {
       setProgress(0, uids.length, msg);
-    });
+    }, cfg.gameplayTypesApi, cfg.machinesApi);
 
-    // ⑤ 全 UID を並列処理（allPages=true → 全ページ強制取得）
     var errors = 0, totalRecs = 0, bi = 0;
     for (; bi < uids.length; bi += PARALLEL) {
       if (!running) break;
@@ -503,18 +510,17 @@ async function startFullProcess() {
         return fetchAllPages_(uid, cfg.historyApiBase, cfg.apiToken, ws.processedRooms, true)
           .then(function(recs) {
             totalRecs += recs.length;
-            recs.forEach(function(r) { applyRecord_(r, ws.prizeMap, ws.cache, ws.processedRooms); });
+            recs.forEach(function(r) { applyRecord_(r, ws.prizeMap, ws.cache, ws.processedRooms, gameplayTypeMap); });
           })
           .catch(function(e) { errors++; console.warn('UID', uid, e.message); });
       }));
     }
 
-    // ⑥ Drive に一括保存（完了・停止どちらも）
     var done = Math.min(bi, uids.length);
     setProgress(done, uids.length, 'Drive に一括保存中…');
     ws.cache.processedRoomIds = Array.from(ws.processedRooms);
     ws.cache.lastUpdated      = new Date().toISOString();
-    ws.cache.batchNextIdx     = done;   // スキャン進捗をカード表示に反映
+    ws.cache.batchNextIdx     = done;
     await gasPost_(gasUrl, ws.cache);
 
     var msg = running
@@ -551,15 +557,17 @@ function dedupeUIDs_(uidRows) {
 }
 
 // =============================================================
-// キャッシュ・prizeMap・processedRooms の初期化
+// キャッシュ・prizeMap・gameplayTypeMap・processedRooms の初期化
 // =============================================================
-async function buildWorkspace_(fc, uids, prizesApi, apiToken, statusFn) {
+async function buildWorkspace_(fc, uids, prizesApi, apiToken, statusFn, gameplayTypesApi, machinesApi) {
   var cache = {
-    days:             fc.days             || {},
-    prizeList:        fc.prizeList        || [],
-    processedRoomIds: fc.processedRoomIds || [],
-    totalUids:        uids.length,
-    batchNextIdx:     0,
+    days:               fc.days               || {},
+    prizeList:          fc.prizeList          || [],
+    gameplayTypeList:   fc.gameplayTypeList   || [],
+    machineGameplayMap: fc.machineGameplayMap || {},
+    processedRoomIds:   fc.processedRoomIds   || [],
+    totalUids:          uids.length,
+    batchNextIdx:       0,
   };
   var processedRooms = new Set(cache.processedRoomIds);
 
@@ -570,11 +578,30 @@ async function buildWorkspace_(fc, uids, prizesApi, apiToken, statusFn) {
   var prizeMap = {};
   cache.prizeList.forEach(function(p) { if (p.nameEN) prizeMap[p.nameEN] = p; });
 
+  if (gameplayTypesApi) {
+    statusFn('遊び方一覧を API から取得中…');
+    try {
+      cache.gameplayTypeList = await fetchGameplayTypes_(gameplayTypesApi, apiToken);
+    } catch (e) { console.warn('gameplay types fetch error:', e.message); }
+  }
+  gameplayTypeMap = {};
+  (cache.gameplayTypeList || []).forEach(function(gt) { if (gt.id) gameplayTypeMap[gt.id] = gt.name; });
+
+  if (machinesApi) {
+    statusFn('マシン一覧を API から取得中…');
+    try {
+      cache.machineGameplayMap = await fetchMachines_(machinesApi, apiToken);
+    } catch (e) { console.warn('machines fetch error:', e.message); }
+  }
+  machineGameplayMap = cache.machineGameplayMap || {};
+
+  console.log('[PGP] 遊び方:', Object.keys(gameplayTypeMap).length + '件 / マシン:', Object.keys(machineGameplayMap).length + '件');
+
   return { cache: cache, processedRooms: processedRooms, prizeMap: prizeMap };
 }
 
 // =============================================================
-// プライズ一覧を全ページ取得（日本語名付き）
+// プライズ一覧を全ページ取得
 // =============================================================
 async function fetchPrizeList_(prizesApi, apiToken) {
   var list = [], page = 1, total = 1;
@@ -603,11 +630,51 @@ async function fetchPrizeList_(prizesApi, apiToken) {
 }
 
 // =============================================================
+// 遊び方一覧を取得（日本語名付き）
+// =============================================================
+async function fetchGameplayTypes_(gameplayTypesApi, apiToken) {
+  var res  = await fetch(gameplayTypesApi + '?page=1&limit=100', {
+    headers: { 'Authorization': 'Bearer ' + apiToken }
+  });
+  var json = await res.json();
+  if (!json.success) return [];
+  // 各レコードは {id (=gameplay_type_id), translations:[{lang_key, name}, ...]}
+  return json.data.records.map(function(gt) {
+    var jpName = '';
+    (gt.translations || []).forEach(function(t) {
+      if (t.lang_key === 'JP') jpName = t.name;
+    });
+    return { id: gt.id, name: jpName || gt.id };
+  });
+}
+
+// =============================================================
+// マシン一覧を全ページ取得（machine_id → gameplay_type_id）
+// =============================================================
+async function fetchMachines_(machinesApi, apiToken) {
+  var map = {}, page = 1, totalPage = 999;
+  while (page <= totalPage) {
+    var res  = await fetch(
+      machinesApi + '?page=' + page + '&limit=50&belong_to_env=true',
+      { headers: { 'Authorization': 'Bearer ' + apiToken } }
+    );
+    var json = await res.json();
+    if (!json.success || !json.data || !json.data.records) break;
+    var recs = json.data.records;
+    if (recs.length === 0) break;
+    recs.forEach(function(m) {
+      if (m.id && m.gameplay_type_id) map[m.id] = m.gameplay_type_id;
+    });
+    totalPage = json.data.total_page || json.data.totalPage || json.data.total_pages || page;
+    if (page >= totalPage) break;
+    page++;
+  }
+  console.log('[PGP] machines: ' + Object.keys(map).length + '件 (全' + page + 'p)');
+  return map;
+}
+
+// =============================================================
 // UID 1件分のプレイ履歴を全ページ取得
-//   allPages=true : 全ページ強制取得（初回フル処理用）
-//   allPages=false: 新規ゼロで打ち切り（差分更新用）
-//
-// ページ取得失敗時はそこで打ち切り、取得済みレコードを返す（全体を捨てない）
 // =============================================================
 async function fetchAllPages_(uid, historyApiBase, apiToken, processedRooms, allPages) {
   var allNew    = [];
@@ -625,7 +692,6 @@ async function fetchAllPages_(uid, historyApiBase, apiToken, processedRooms, all
       );
       json = await res.json();
     } catch (e) {
-      // ネットワーク/パースエラー: このページで打ち切り、取得済みを返す
       console.warn('[fetchAllPages] UID=' + uid + ' page=' + page + ' error:', e.message);
       break;
     }
@@ -644,7 +710,6 @@ async function fetchAllPages_(uid, historyApiBase, apiToken, processedRooms, all
     }
 
     if (page >= totalPage) break;
-    // 差分更新のみ: 新規ゼロ → 以降も古いレコードなので打ち切り
     if (!allPages && newOnPage === 0) break;
     page++;
   }
@@ -656,10 +721,9 @@ async function fetchAllPages_(uid, historyApiBase, apiToken, processedRooms, all
 }
 
 // =============================================================
-// レコード処理（ブラウザ用）
-//   room_id が未処理なら日次データに加算して processedRooms に追加
+// レコード処理
 // =============================================================
-function applyRecord_(r, prizeMap, cache, processedRooms) {
+function applyRecord_(r, prizeMap, cache, processedRooms, gtMap) {
   if (!r.room_id || processedRooms.has(r.room_id)) return;
 
   var pf    = r.play_fee || {};
@@ -672,7 +736,6 @@ function applyRecord_(r, prizeMap, cache, processedRooms) {
   var day = cache.days[date];
 
   if (pf.treasure_box_id != null) {
-    // トレジャーボックス: 日本語名を優先
     var tbKey = (pf.treasure_box_name_map && pf.treasure_box_name_map.JP)
                 ? pf.treasure_box_name_map.JP.content
                 : (pf.treasure_box_name || 'トレジャーボックス');
@@ -692,7 +755,7 @@ function applyRecord_(r, prizeMap, cache, processedRooms) {
     else if (r.status === 'LOSE') tb.losses++;
   }
 
-  // TB経由でも prize_name があればプライズ統計にも記録（TB集計と両立）
+  // TB経由でも prize_name があればプライズ統計にも記録
   if (r.prize_name) {
     var nameEN = r.prize_name;
     var info   = prizeMap[nameEN] || {};
@@ -704,6 +767,7 @@ function applyRecord_(r, prizeMap, cache, processedRooms) {
         quantity:         qty,
         assistGaugeLimit: info.assistGaugeLimit != null ? info.assistGaugeLimit : null,
         turns: 0, wins: 0, losses: 0, bcoin: 0,
+        byGameplay: {},
       };
     }
     var p = day.prizes[nameEN];
@@ -711,6 +775,18 @@ function applyRecord_(r, prizeMap, cache, processedRooms) {
     p.bcoin += bcoin;
     if      (r.status === 'WIN')  p.wins++;
     else if (r.status === 'LOSE') p.losses++;
+
+    // 遊び方別内訳: machine_id → gameplay_type_id → JP名
+    var machineId = r.machine_id || '';
+    var gtId   = (machineId && machineGameplayMap[machineId]) ? machineGameplayMap[machineId] : '';
+    var gtName = (gtId && gtMap && gtMap[gtId]) ? gtMap[gtId] : '不明';
+    if (!p.byGameplay) p.byGameplay = {};
+    if (!p.byGameplay[gtName]) p.byGameplay[gtName] = { turns: 0, wins: 0, losses: 0, bcoin: 0 };
+    var bg = p.byGameplay[gtName];
+    bg.turns += turn;
+    bg.bcoin += bcoin;
+    if      (r.status === 'WIN')  bg.wins++;
+    else if (r.status === 'LOSE') bg.losses++;
   }
 
   processedRooms.add(r.room_id);
@@ -751,11 +827,8 @@ function fmtDate(d) {
 }
 
 function getDateRange() {
-  if (period === 'alltime') {
-    return Object.keys((allData && allData.days) || {}).sort();
-  }
-
-  if (period === 'daily') return [fmtDate(anchor)];
+  if (period === 'alltime') return Object.keys((allData && allData.days) || {}).sort();
+  if (period === 'daily')   return [fmtDate(anchor)];
 
   if (period === 'weekly') {
     var start = new Date(anchor);
@@ -787,7 +860,6 @@ function periodLabel() {
     if (dates.length === 0) return '全期間';
     return '全期間 (' + dates[0] + ' 〜 ' + dates[dates.length - 1] + ')';
   }
-
   var wd = ['日','月','火','水','木','金','土'];
   if (period === 'daily') {
     return anchor.getFullYear() + '年' + (anchor.getMonth() + 1) + '月' + anchor.getDate() + '日'
@@ -808,14 +880,14 @@ function periodLabel() {
 }
 
 function navigate(dir) {
-  if (period === 'alltime') return;  // 全期間はナビゲーション不要
+  if (period === 'alltime') return;
   if (period === 'daily')        anchor.setDate(anchor.getDate() + dir);
   else if (period === 'weekly')  anchor.setDate(anchor.getDate() + dir * 7);
   else if (period === 'monthly') anchor.setMonth(anchor.getMonth() + dir);
   renderAll();
 }
 
-function goToday()           { anchor = new Date(); renderAll(); }
+function goToday()  { anchor = new Date(); renderAll(); }
 
 function setPeriod(p, btn) {
   period = p;
@@ -852,12 +924,26 @@ function aggregateDays(dateList) {
           quantity:         s.quantity,
           assistGaugeLimit: s.assistGaugeLimit || pl.assistGaugeLimit || null,
           turns: 0, wins: 0, losses: 0, bcoin: 0,
+          byGameplay: {},
         };
       }
       prizes[nameEN].turns  += s.turns  || 0;
       prizes[nameEN].wins   += s.wins   || 0;
       prizes[nameEN].losses += s.losses || 0;
       prizes[nameEN].bcoin  += s.bcoin  || 0;
+
+      // byGameplay マージ
+      if (s.byGameplay) {
+        Object.keys(s.byGameplay).forEach(function(gt) {
+          var src = s.byGameplay[gt];
+          if (!prizes[nameEN].byGameplay[gt]) prizes[nameEN].byGameplay[gt] = { turns: 0, wins: 0, losses: 0, bcoin: 0 };
+          var dst = prizes[nameEN].byGameplay[gt];
+          dst.turns  += src.turns  || 0;
+          dst.wins   += src.wins   || 0;
+          dst.losses += src.losses || 0;
+          dst.bcoin  += src.bcoin  || 0;
+        });
+      }
     });
 
     Object.keys(day.treasureBoxes || {}).forEach(function(key) {
@@ -930,6 +1016,47 @@ function card_(label, value) {
     '</div><div class="card-value">' + value + '</div></div>';
 }
 
+// =============================================================
+// アコーディオン（遊び方別内訳）
+// =============================================================
+function toggleDetail_(row) {
+  var next = row.nextElementSibling;
+  if (next && next.classList.contains('detail-row')) {
+    var isOpen = next.style.display !== 'none';
+    next.style.display = isOpen ? 'none' : 'table-row';
+    row.classList.toggle('expanded', !isOpen);
+  }
+}
+
+function buildDetailRow_(s) {
+  var bg = s.byGameplay;
+  var content;
+  if (!bg || Object.keys(bg).length === 0) {
+    content = '<p class="detail-empty">遊び方データなし（フル再処理で取得されます）</p>';
+  } else {
+    var rows = Object.keys(bg).sort(function(a, b) {
+      return (bg[b].bcoin || 0) - (bg[a].bcoin || 0);
+    }).map(function(gt, idx) {
+      var g = bg[gt];
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td>' + esc_(gt) + '</td>' +
+        '<td>' + fmt_(g.turns) + '</td>' +
+        '<td class="win-count">' + fmt_(g.wins) + '</td>' +
+        '<td class="lose-count">' + fmt_(g.losses) + '</td>' +
+        '<td>' + fmt_(g.bcoin) + '</td>' +
+      '</tr>';
+    }).join('');
+    content =
+      '<table class="detail-table"><thead><tr>' +
+        '<th>#</th><th>遊び方</th><th>手数</th><th>WIN</th><th>LOSE</th><th>消費BCoin</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+  return '<tr class="detail-row" style="display:none;"><td colspan="10">' +
+    '<div class="detail-content"><h4>遊び方別内訳</h4>' + content + '</div>' +
+    '</td></tr>';
+}
+
 function renderPrizeStats_(stats) {
   var target = parseFloat(document.getElementById('target-rate').value) || 30;
   var tbody  = document.getElementById('prizes-body');
@@ -940,7 +1067,7 @@ function renderPrizeStats_(stats) {
   tbody.innerHTML = stats.map(function(s, i) {
     var rc = rateClass_(s.prizeRate, target);
     var rt = s.prizeRate !== null ? s.prizeRate + '%' : 'N/A';
-    return '<tr>' +
+    return '<tr class="expandable-row" onclick="toggleDetail_(this)">' +
       '<td class="rank-cell">' + (i + 1) + '</td>' +
       '<td>' + esc_(s.nameJP || s.nameEN || '-') + '</td>' +
       '<td><span class="type-badge">' + prizeTypeLabel_(s.prizeType) + '</span></td>' +
@@ -951,7 +1078,8 @@ function renderPrizeStats_(stats) {
       '<td class="lose-count">' + fmt_(s.losses) + '</td>' +
       '<td>' + fmt_(s.bcoin) + '</td>' +
       '<td><span class="rate-badge ' + rc + '">' + rt + '</span></td>' +
-    '</tr>';
+    '</tr>' +
+    buildDetailRow_(s);
   }).join('');
 }
 
@@ -1009,6 +1137,7 @@ function switchTab(name, btn) {
 function filterTable(tableId, query) {
   var q = query.toLowerCase();
   document.querySelectorAll('#' + tableId + ' tbody tr').forEach(function(row) {
+    if (row.classList.contains('detail-row')) return;  // 詳細行はフィルタ対象外
     row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
 }
@@ -1016,7 +1145,6 @@ function filterTable(tableId, query) {
 function sortTable(tableId, col) {
   var table = document.getElementById(tableId);
   var tbody = table.querySelector('tbody');
-  var rows  = Array.from(tbody.querySelectorAll('tr'));
   var key   = tableId + '_' + col;
   var asc   = sortState[key] !== 'asc';
   sortState[key] = asc ? 'asc' : 'desc';
@@ -1026,23 +1154,46 @@ function sortTable(tableId, col) {
     if (i === col) th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
   });
 
-  // # 列 (col=0) でソートする場合は元の順序に戻す感覚なので数値比較のまま
-  rows.sort(function(a, b) {
-    var aT = (a.cells[col] || {}).textContent.trim();
-    var bT = (b.cells[col] || {}).textContent.trim();
-    var aN = parseFloat(aT.replace(/[^\d.-]/g, ''));
-    var bN = parseFloat(bT.replace(/[^\d.-]/g, ''));
-    if (!isNaN(aN) && !isNaN(bN)) return asc ? aN - bN : bN - aN;
-    return asc ? aT.localeCompare(bT, 'ja') : bT.localeCompare(aT, 'ja');
-  });
-  rows.forEach(function(r) { tbody.appendChild(r); });
-
-  // ソート後にランク番号を振り直す
-  var rank = 0;
-  Array.from(tbody.querySelectorAll('tr')).forEach(function(r) {
-    var cell = r.querySelector('.rank-cell');
-    if (cell) cell.textContent = ++rank;
-  });
+  var expandables = Array.from(tbody.querySelectorAll('tr.expandable-row'));
+  if (expandables.length > 0) {
+    // アコーディオンペアごとにソート
+    var pairs = expandables.map(function(row) {
+      var next = row.nextElementSibling;
+      return { main: row, detail: (next && next.classList.contains('detail-row')) ? next : null };
+    });
+    pairs.sort(function(a, b) {
+      var aT = (a.main.cells[col] || {}).textContent.trim();
+      var bT = (b.main.cells[col] || {}).textContent.trim();
+      var aN = parseFloat(aT.replace(/[^\d.-]/g, ''));
+      var bN = parseFloat(bT.replace(/[^\d.-]/g, ''));
+      if (!isNaN(aN) && !isNaN(bN)) return asc ? aN - bN : bN - aN;
+      return asc ? aT.localeCompare(bT, 'ja') : bT.localeCompare(aT, 'ja');
+    });
+    pairs.forEach(function(pair, i) {
+      if (pair.detail) { pair.detail.style.display = 'none'; }
+      pair.main.classList.remove('expanded');
+      tbody.appendChild(pair.main);
+      if (pair.detail) tbody.appendChild(pair.detail);
+      var cell = pair.main.querySelector('.rank-cell');
+      if (cell) cell.textContent = i + 1;
+    });
+  } else {
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort(function(a, b) {
+      var aT = (a.cells[col] || {}).textContent.trim();
+      var bT = (b.cells[col] || {}).textContent.trim();
+      var aN = parseFloat(aT.replace(/[^\d.-]/g, ''));
+      var bN = parseFloat(bT.replace(/[^\d.-]/g, ''));
+      if (!isNaN(aN) && !isNaN(bN)) return asc ? aN - bN : bN - aN;
+      return asc ? aT.localeCompare(bT, 'ja') : bT.localeCompare(aT, 'ja');
+    });
+    rows.forEach(function(r) { tbody.appendChild(r); });
+    var rank = 0;
+    Array.from(tbody.querySelectorAll('tr')).forEach(function(r) {
+      var cell = r.querySelector('.rank-cell');
+      if (cell) cell.textContent = ++rank;
+    });
+  }
 }
 
 // =============================================================
