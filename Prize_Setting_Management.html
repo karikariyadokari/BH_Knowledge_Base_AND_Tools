@@ -427,13 +427,16 @@ async function fetchPrizes() {
 
 function renderList() {
   const nameQ = (document.getElementById('filterName')?.value || '').trim().toLowerCase();
-  let prizes = nameQ
-    ? allPrizes.filter(p => {
-        const jp = (p.name?.JP?.content || '').toLowerCase();
-        const en = (p.name?.EN?.content || '').toLowerCase();
-        return jp.includes(nameQ) || en.includes(nameQ);
-      })
-    : allPrizes;
+  const statusQ = document.getElementById('filterStatus')?.value || '';
+  let prizes = allPrizes.filter(p => {
+    if (statusQ && p.status !== statusQ) return false;
+    if (nameQ) {
+      const jp = (p.name?.JP?.content || '').toLowerCase();
+      const en = (p.name?.EN?.content || '').toLowerCase();
+      if (!jp.includes(nameQ) && !en.includes(nameQ)) return false;
+    }
+    return true;
+  });
 
   if (!prizes.length) {
     document.getElementById('prizeList').innerHTML = '<div class="empty"><div class="ico">🔍</div><p>該当プライズなし</p></div>';
@@ -1469,6 +1472,33 @@ async function showBulkBoothEdit() {
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-title">アシストゲージ一括変更</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="fg">
+          <label>アシストゲージ 有効/無効</label>
+          <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="radio" name="bulk_assist_mode" value="keep" checked> 変更しない
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="radio" name="bulk_assist_mode" value="on"> 有効にする
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="radio" name="bulk_assist_mode" value="off"> 無効にする
+            </label>
+          </div>
+        </div>
+        <div class="fg">
+          <label>アシスト上限回数</label>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <input type="number" id="bulk_assist_limit" placeholder="空欄＝変更しない" style="width:160px" min="1">
+            <span style="font-size:11px;color:var(--muted)">空欄のままにすると変更しません</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="bulkProgress" class="card" style="display:none">
       <div class="card-title">適用進捗</div>
       <div style="height:8px;background:var(--border);border-radius:4px;margin-bottom:10px">
@@ -1548,7 +1578,7 @@ function collectBulkBoothItems() {
   });
 }
 
-function buildBodyFromData(d, boothItems) {
+function buildBodyFromData(d, boothItems, assistOverride) {
   const pi = d.prize_items?.[0];
   return {
     name: d.name?.EN?.content || '',
@@ -1566,8 +1596,8 @@ function buildBodyFromData(d, boothItems) {
     additional_image_urls: d.additional_image_urls ?? [],
     status: d.status,
     total_items: d.total_items ?? 9999,
-    assist_gauge: d.assist_gauge ?? false,
-    assist_gauge_limit: d.assist_gauge_limit ?? null,
+    assist_gauge: assistOverride?.gauge !== undefined ? assistOverride.gauge : (d.assist_gauge ?? false),
+    assist_gauge_limit: assistOverride?.limitIsSet ? assistOverride.limit : (d.assist_gauge_limit ?? null),
     limit_stock_prize_notification: d.limit_stock_prize_notification ?? 30,
     max_booths_per_gameplay: d.max_booths_per_gameplay ?? 2,
     sale_period: d.sale_period ?? false,
@@ -1592,8 +1622,17 @@ function buildBodyFromData(d, boothItems) {
 async function bulkApplyBooths() {
   const ids = window._bulkIds || [...selectedPrizeIds];
   if (!ids.length) return;
-  const boothItems = collectBulkBoothItems();
-  if (!confirm(`${ids.length}件のプライズのブース設定を上書きします。よろしいですか？`)) return;
+  const newBoothItems = collectBulkBoothItems();
+  const boothItemsOverride = newBoothItems.length > 0;
+  const assistMode = document.querySelector('input[name="bulk_assist_mode"]:checked')?.value || 'keep';
+  const assistLimitRaw = document.getElementById('bulk_assist_limit')?.value.trim();
+  const assistOverride = (assistMode !== 'keep' || assistLimitRaw)
+    ? { gauge: assistMode === 'keep' ? undefined : assistMode === 'on', limitIsSet: !!assistLimitRaw, limit: assistLimitRaw ? (parseInt(assistLimitRaw) || null) : null }
+    : null;
+  const confirmMsg = boothItemsOverride
+    ? `${ids.length}件のプライズのブース設定を上書きします。よろしいですか？`
+    : `${ids.length}件のプライズを更新します（ブース設定は変更されません）。よろしいですか？`;
+  if (!confirm(confirmMsg)) return;
 
   const btn = document.getElementById('btnBulkApply');
   if (btn) btn.disabled = true;
@@ -1616,7 +1655,8 @@ async function bulkApplyBooths() {
       const getRes = await fetch(`${API}/prizes/${id}`, { headers: authHeaders() });
       const getJson = await getRes.json();
       if (!getJson.success) throw new Error(getJson.message || 'GET失敗');
-      const body = buildBodyFromData(getJson.data, boothItems);
+      const effectiveBoothItems = boothItemsOverride ? newBoothItems : (getJson.data.playable_booth_setting_items || []);
+      const body = buildBodyFromData(getJson.data, effectiveBoothItems, assistOverride);
       const putRes = await fetch(`${API}/prizes/${id}`, {
         method: 'PUT', headers: authHeaders(), body: JSON.stringify(body)
       });
